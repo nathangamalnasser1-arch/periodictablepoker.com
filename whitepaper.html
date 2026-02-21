@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Periodic Table Poker — Whitepaper</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #121212;
+      color: #d1d5db;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0 0 0.25rem;
+      background: linear-gradient(to right, #f59e0b, #22d3ee);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .author {
+      color: #9ca3af;
+      font-size: 0.9375rem;
+      margin-bottom: 2rem;
+    }
+    h2 { font-size: 1.25rem; margin: 2rem 0 0.75rem; color: #e5e7eb; }
+    p { margin: 0 0 1rem; }
+    a { color: #22d3ee; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .blockquote {
+      border-left: 4px solid rgba(230, 138, 0, 0.6);
+      padding: 0.5rem 0 0.5rem 1rem;
+      margin: 1rem 0;
+      background: rgba(230, 138, 0, 0.05);
+      border-radius: 0 0.25rem 0.25rem 0;
+    }
+    nav { margin-top: 2rem; }
+    nav a { color: #6b7280; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Periodic Table Poker</h1>
+    <p class="author">Whitepaper · Author: Nathan Gamal Nasser</p>
+
+    <h2>1. Purpose</h2>
+    <p>Periodic Table Poker is an educational card game that combines Texas Hold'em with the 118 elements of the periodic table. The game aims to make science engaging through play, encouraging players to reason about chemistry, biology, and physics as they compete to assemble the most valuable hand.</p>
+
+    <h2>2. Core Concept</h2>
+    <p>The deck consists of one card per chemical element. Each card displays the element symbol, atomic number, name, and atomic mass. Hands are evaluated by their total atomic mass—the sum of the best five cards a player can form from their hole cards and the community board.</p>
+    <p>The foundational rule: elements essential to life (those present in DNA—hydrogen, carbon, nitrogen, oxygen, phosphorus) represent the highest value. From there, players argue why their hand is more valuable than others, drawing on scientific reasoning.</p>
+
+    <h2>3. Game Mechanics</h2>
+    <p>The game follows standard Texas Hold'em flow: preflop (2 hole cards), flop (3 community cards), turn (1), river (1). Each player selects the best 5-card hand from their 2 hole cards plus 5 community cards, maximizing total atomic mass. Ties are resolved by community debate and voting.</p>
+
+    <h2>4. Community-Driven Hierarchy</h2>
+    <p>Rather than a fixed ranking, the hierarchy of hands evolves through community input. Players submit their best hands to <a href="https://github.com/nathangamalnasser1-arch/periodictablepoker.com/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>, where others can react, vote, and propose alternatives. This creates a living, consensus-based taxonomy that reflects both scientific understanding and collective play experience.</p>
+
+    <h2>5. Design Philosophy</h2>
+    <p>The game is designed around three principles:</p>
+    <p><strong>Life-first:</strong> Elements that sustain or enable life are valued above those framed solely by destructive power. The rule inspired by Alfred Nobel: arguing that radioactive elements are "better" because of destruction is grounds for disqualification; arguing that they sustain life as a renewable energy source is valid.</p>
+    <p><strong>Open hierarchy:</strong> The ranking is not fixed. As science and technology advance, the hierarchy can and should change.</p>
+    <p><strong>Learning by arguing:</strong> Players learn by defending their hands with scientific reasoning, not by memorization alone.</p>
+
+    <h2>6. Technical Architecture</h2>
+    <p>The implementation is a static web app built with React and Vite, hosted on Firebase. The game runs entirely client-side with no backend game state—each session is local. Hierarchy submissions are handled through GitHub's issue tracker, keeping the system simple and auditable.</p>
+
+    <h2>7. Future Directions</h2>
+    <p>Potential extensions include real-time multiplayer via Firebase, institutional adoption for classrooms, and integration with curriculum standards. The community hierarchy can expand to include hand categories, meta-rules, and regional variants.</p>
+
+    <nav>
+      <a href="index.html">← Back to Home</a>
+    </nav>
+  </main>
+</body>
+</html>
