@@ -52,7 +52,7 @@ function buildIntroDeck(gameNumber) {
 }
 
 /** Deal hole cards (2 per player) and community cards. gameNumber 1–3 = intro hands. */
-export function dealGame(numPlayers = 2, gameNumber = 0) {
+export function dealGame(numPlayers = 10, gameNumber = 0) {
   const deck =
     gameNumber >= 1 && gameNumber <= 3
       ? buildIntroDeck(gameNumber)

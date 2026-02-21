@@ -21,7 +21,20 @@ function buildHierarchyIssueUrl(repo, playerId, playerData, bestHand) {
 }
 
 const HUMAN_INDEX = 0;
-const DEALER_INDEX = 1; // Dealer "D" on opponent for first hand
+const DEALER_INDEX = 1; // Dealer "D" on bot 1 for first hand
+const NUM_PLAYERS = 10;
+
+/** Seat positions around oval: index 0 = bottom (you), 1..9 = clockwise. Returns { left %, top %, isTop } */
+function getSeatPosition(seatIndex) {
+  const angleDeg = -90 + (seatIndex * 360 / NUM_PLAYERS);
+  const angleRad = (angleDeg * Math.PI) / 180;
+  const radiusX = 42;
+  const radiusY = 38;
+  const left = 50 + radiusX * Math.cos(angleRad);
+  const top = 50 + radiusY * Math.sin(angleRad);
+  const isTop = top < 50;
+  return { left, top, isTop };
+}
 
 export function GameBoard({ gameState, gameNumber, onDealFlop, onDealTurn, onDealRiver, onNextGame, githubRepo }) {
   if (!gameState) {
@@ -43,54 +56,59 @@ export function GameBoard({ gameState, gameNumber, onDealFlop, onDealTurn, onDea
   const setDataFor = (playerId, value) => setPlayerData((prev) => ({ ...prev, [playerId]: value }));
 
   const you = players?.[HUMAN_INDEX];
-  const opponent = players?.[1];
-  const displayNameYou = 'You';
-  const displayNameOpponent = opponent?.id === 'player-1' ? 'Bot' : (opponent?.id ?? 'Opponent');
 
-  const renderSeat = (player, seatClass, displayName, isDealer, showCardsOpen) => {
+  const renderSeat = (player, seatIndex, displayName, isDealer, showCardsOpen) => {
     if (!player) return null;
+    const { left, top, isTop } = getSeatPosition(seatIndex);
     const bestHand = getBestHand(player.holeCards, communityCards);
     const combo = getMoleculeCombo(player.holeCards, communityCards);
     const comboLabel = combo === 'chonp' ? 'CHONP' : combo === 'h2o' ? 'H₂O' : combo === 'nacl' ? 'NaCl' : null;
     const isYou = player.id === you?.id;
     return (
-      <div key={player.id} className={`seat ${seatClass}`} data-testid={`player-${player.id}`}>
-        <div className={`player-box ${combo ? 'player-flash' : ''}`} style={{ position: 'relative' }}>
-          {isDealer && <span className="dealer-badge">D</span>}
-          <div className="player-avatar">{displayName.slice(0, 1).toUpperCase()}</div>
-          <div className="player-info">
-            <span className="player-name">{displayName}</span>
-            <span className="player-chips">{player.chips}</span>
+      <div
+        key={player.id}
+        className={`seat seat-${seatIndex} ${isTop ? 'seat-top' : 'seat-bottom'}`}
+        data-testid={`player-${player.id}`}
+        style={{ left: `${left}%`, top: `${top}%` }}
+      >
+        <div className="seat-content">
+          <div className={`player-box ${combo ? 'player-flash' : ''}`} style={{ position: 'relative' }}>
+            {isDealer && <span className="dealer-badge">D</span>}
+            <div className="player-avatar">{displayName.slice(0, 1).toUpperCase()}</div>
+            <div className="player-info">
+              <span className="player-name" title={displayName}>{displayName}</span>
+              <span className="player-chips">{player.chips}</span>
+            </div>
           </div>
-        </div>
-        {comboLabel && <div className="player-combo-badge">{comboLabel}!</div>}
-        <div className="player-cards">
-          {player.holeCards?.map((card, i) => (
-            <Card key={card.id || i} element={card} faceDown={!showCardsOpen && !isYou} />
-          ))}
-        </div>
-        <div className="player-best-hand">Best hand: {bestHand.weight} u</div>
-        {phase === 'river' && canSubmitHierarchy && isYou && (
-          <div className="player-hierarchy">
-            <input
-              type="text"
-              placeholder="Your name or note for the hierarchy..."
-              value={playerData[player.id] ?? ''}
-              onChange={(e) => setDataFor(player.id, e.target.value)}
-              className="player-hierarchy-input"
-              data-testid={`player-${player.id}-input`}
-            />
-            <a
-              href={buildHierarchyIssueUrl(githubRepo, player.id, playerData[player.id], bestHand)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-hierarchy"
-              data-testid={`player-${player.id}-submit`}
-            >
-              Submit to Hierarchy
-            </a>
+          {comboLabel && <div className="player-combo-badge">{comboLabel}!</div>}
+          <div className="player-cards">
+            {player.holeCards?.map((card, i) => (
+              <Card key={card.id || i} element={card} faceDown={!showCardsOpen && !isYou} />
+            ))}
           </div>
-        )}
+          <div className="player-best-hand">Best hand: {bestHand.weight} u</div>
+          {phase === 'river' && canSubmitHierarchy && isYou && (
+            <div className="player-hierarchy">
+              <input
+                type="text"
+                placeholder="Your name or note for the hierarchy..."
+                value={playerData[player.id] ?? ''}
+                onChange={(e) => setDataFor(player.id, e.target.value)}
+                className="player-hierarchy-input"
+                data-testid={`player-${player.id}-input`}
+              />
+              <a
+                href={buildHierarchyIssueUrl(githubRepo, player.id, playerData[player.id], bestHand)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-hierarchy"
+                data-testid={`player-${player.id}-submit`}
+              >
+                Submit to Hierarchy
+              </a>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -111,8 +129,10 @@ export function GameBoard({ gameState, gameNumber, onDealFlop, onDealTurn, onDea
             </div>
           </div>
           <div className="table-seats">
-            {you && renderSeat(you, 'seat-you', displayNameYou, DEALER_INDEX === 0, true)}
-            {opponent && renderSeat(opponent, 'seat-opponent', displayNameOpponent, DEALER_INDEX === 1, true)}
+            {players?.map((player, i) => {
+              const displayName = i === HUMAN_INDEX ? 'You' : `Bot ${i}`;
+              return renderSeat(player, i, displayName, i === DEALER_INDEX, true);
+            })}
           </div>
         </div>
       </div>

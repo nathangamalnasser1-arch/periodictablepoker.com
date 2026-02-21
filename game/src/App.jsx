@@ -13,7 +13,7 @@ export default function App() {
   const startGame = useCallback(() => {
     setGameKey((k) => k + 1);
     setGameNumber(1);
-    setGameState(dealGame(2, 1));
+    setGameState(dealGame(10, 1));
   }, []);
 
   const handleDealFlop = useCallback(() => {
@@ -32,7 +32,7 @@ export default function App() {
     setGameKey((k) => k + 1);
     setGameNumber((n) => {
       const next = n + 1;
-      setGameState(dealGame(2, next));
+      setGameState(dealGame(10, next));
       return next;
     });
   }, []);
