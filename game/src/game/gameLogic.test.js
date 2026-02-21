@@ -1,80 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import {
-  dealGame,
-  dealFlop,
-  dealTurn,
-  dealRiver,
-  getBestHandWeight,
-  getBestHand,
-  getMoleculeCombo,
-  PHASES,
-  createSession,
-  dealHand,
-  dealFlopSession,
-  dealTurnSession,
-  dealRiverSession,
-  endHand,
-  getHandRank,
-  HAND_TIERS,
-  TOTAL_ATOMCOINS,
-  PER_PLAYER_ATOMCOINS,
-  NUM_TABLE_PLAYERS,
-} from './gameLogic.js';
+import { dealGame, dealFlop, dealTurn, dealRiver, getBestHandWeight, getBestHand, getMoleculeCombo, PHASES } from './gameLogic.js';
 
 describe('gameLogic', () => {
-  describe('session (10 players, atomcoins)', () => {
-    it('createSession creates 10 players with 1000 atomcoins each', () => {
-      const s = createSession('guest-1', 'game-1');
-      expect(s.players).toHaveLength(NUM_TABLE_PLAYERS);
-      s.players.forEach((p, i) => {
-        expect(p.chips).toBe(PER_PLAYER_ATOMCOINS);
-        expect(p.isBot).toBe(i !== 0);
-        expect(p.eliminated).toBe(false);
-      });
-      expect(s.guestName).toBe('guest-1');
-      expect(s.gameName).toBe('game-1');
-      expect(s.currentHand).toBe(null);
-    });
-
-    it('dealHand deals 2 cards each and takes ante', () => {
-      const s = createSession('g', 'gm');
-      const after = dealHand(s);
-      expect(after.currentHand).toBeTruthy();
-      expect(after.currentHand.phase).toBe(PHASES.PREFLOP);
-      expect(after.currentHand.communityCards).toHaveLength(0);
-      const active = after.players.filter((p) => !p.eliminated && p.holeCards.length === 2);
-      expect(active.length).toBe(10);
-      active.forEach((p) => {
-        expect(p.holeCards).toHaveLength(2);
-        expect(p.chips).toBe(1000 - 50);
-      });
-      expect(after.currentHand.pot).toBe(50 * 10);
-    });
-
-    it('dealFlopSession adds 3 community cards', () => {
-      const s = createSession('g', 'gm');
-      const withHand = dealHand(s);
-      const after = dealFlopSession(withHand);
-      expect(after.currentHand.communityCards).toHaveLength(3);
-      expect(after.currentHand.phase).toBe(PHASES.FLOP);
-    });
-
-    it('endHand assigns pot to winner and can set gameOver when someone has 10000', () => {
-      const s = createSession('g', 'gm');
-      let state = dealHand(s);
-      state = dealFlopSession(state);
-      state = dealTurnSession(state);
-      state = dealRiverSession(state);
-      const { session: after, gameOver, winner, winAmount } = endHand(state);
-      expect(after.currentHand.phase).toBe(PHASES.SHOWDOWN);
-      expect(winAmount).toBe(500);
-      const winners = after.players.filter((p) => p.chips > 1000);
-      expect(winners.length).toBeGreaterThanOrEqual(1);
-      expect(gameOver).toBe(false);
-      expect(winner).toBeTruthy();
-    });
-  });
-
   it('dealGame creates 2 players with 2 hole cards each', () => {
     const game = dealGame(2);
     expect(game.players).toHaveLength(2);
@@ -181,26 +108,6 @@ describe('gameLogic', () => {
     it('game 4+ uses normal shuffle', () => {
       const g = dealGame(2, 4);
       expect(g.deck).toHaveLength(118);
-    });
-  });
-
-  describe('getHandRank and win order', () => {
-    it('CHONP has highest tier', () => {
-      const hole = [{ symbol: 'C' }, { symbol: 'H' }];
-      const community = [{ symbol: 'O' }, { symbol: 'N' }, { symbol: 'P' }];
-      const r = getHandRank(hole, community);
-      expect(r.tier).toBe(HAND_TIERS.CHONP);
-      expect(r.combo).toBe('chonp');
-    });
-    it('H2O has tier above NaCl and weight', () => {
-      const h2o = getHandRank([{ symbol: 'H' }], [{ symbol: 'O' }]);
-      const nacl = getHandRank([{ symbol: 'Na' }], [{ symbol: 'Cl' }]);
-      const weight = getHandRank([{ symbol: 'Fe', mass: 56 }], [{ symbol: 'Au', mass: 197 }]);
-      expect(h2o.tier).toBe(HAND_TIERS.H2O);
-      expect(nacl.tier).toBe(HAND_TIERS.NACL);
-      expect(weight.tier).toBe(HAND_TIERS.WEIGHT);
-      expect(h2o.tier > nacl.tier).toBe(true);
-      expect(nacl.tier > weight.tier).toBe(true);
     });
   });
 

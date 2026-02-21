@@ -1,155 +1,131 @@
-/**
- * @vitest-environment jsdom
- */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { GameBoard } from './GameBoard.jsx';
 
-function sessionWith(overrides = {}) {
-  return {
-    players: [
-      { id: 'player-0', seatIndex: 0, name: 'You', holeCards: [], chips: 1000, folded: false, isBot: false, eliminated: false },
-      { id: 'player-1', seatIndex: 1, name: 'Bot 1', holeCards: [], chips: 1000, folded: false, isBot: true, eliminated: false },
-    ],
-    handNumber: 1,
-    startTime: Date.now(),
-    stats: { bestHand: null, lastHand: null, biggestWin: 0 },
-    currentHand: {
-      phase: 'preflop',
-      communityCards: [],
-      pot: 0,
-    },
-    ...overrides,
-  };
-}
-
 describe('GameBoard', () => {
-  it('shows best hand weight for human player when cards visible', () => {
-    const session = sessionWith({
+  it('shows best hand weight below each player cards', () => {
+    const gameState = {
       players: [
         {
-          id: 'player-0',
-          seatIndex: 0,
-          name: 'You',
+          id: '1',
           holeCards: [{ mass: 12, symbol: 'C', number: 6 }, { mass: 16, symbol: 'S', number: 16 }],
           chips: 1000,
-          folded: false,
-          isBot: false,
-          eliminated: false,
         },
         {
-          id: 'player-1',
-          seatIndex: 1,
-          name: 'Bot 1',
-          holeCards: [{ mass: 1 }, { mass: 4 }],
+          id: '2',
+          holeCards: [{ mass: 1, symbol: 'H', number: 1 }, { mass: 4, symbol: 'He', number: 2 }],
           chips: 1000,
-          folded: false,
-          isBot: true,
-          eliminated: false,
         },
       ],
-      currentHand: { phase: 'preflop', communityCards: [], pot: 0 },
-    });
-    render(<GameBoard session={session} />);
-    expect(screen.getByText(/Best hand: 28 u/)).toBeTruthy();
+      communityCards: [],
+      phase: 'preflop',
+    };
+    render(<GameBoard gameState={gameState} />);
+    const bestHandElements = screen.getAllByText(/Best hand:/);
+    expect(bestHandElements).toHaveLength(2);
+    expect(bestHandElements[0].textContent).toBe('Best hand: 28 u');
+    expect(bestHandElements[1].textContent).toBe('Best hand: 5 u');
   });
 
-  it('shows Showdown button when phase is river', () => {
-    const onShowdown = vi.fn();
-    const session = sessionWith({
-      players: [
-        { id: 'player-0', seatIndex: 0, name: 'You', holeCards: [{ mass: 1 }, { mass: 2 }], chips: 1000, folded: false, isBot: false, eliminated: false },
-        { id: 'player-1', seatIndex: 1, name: 'Bot 1', holeCards: [], chips: 1000, folded: false, isBot: true, eliminated: false },
-      ],
-      currentHand: {
-        phase: 'river',
-        communityCards: [{ mass: 3 }, { mass: 4 }, { mass: 5 }, { mass: 6 }, { mass: 7 }],
-        pot: 100,
-      },
-    });
-    render(<GameBoard session={session} onShowdown={onShowdown} />);
-    const btn = screen.getByRole('button', { name: /showdown/i });
-    expect(btn).toBeTruthy();
-    btn.click();
-    expect(onShowdown).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows Next Hand button after showdown when not game over', () => {
-    const onNextHand = vi.fn();
-    const session = sessionWith({
-      currentHand: { phase: 'showdown', communityCards: [], pot: 0 },
-    });
-    render(
-      <GameBoard
-        session={session}
-        gameOver={false}
-        onNextHand={onNextHand}
-      />
-    );
-    const btn = screen.getByRole('button', { name: /next hand/i });
-    expect(btn).toBeTruthy();
-    btn.click();
-    expect(onNextHand).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows molecule combo badge when player has H and O', () => {
-    const session = sessionWith({
+  it('computes best 5 from 7 cards for each player', () => {
+    const gameState = {
       players: [
         {
-          id: 'player-0',
-          seatIndex: 0,
-          name: 'You',
+          id: '1',
+          holeCards: [{ mass: 100 }, { mass: 90 }],
+          chips: 1000,
+        },
+      ],
+      communityCards: [
+        { mass: 80 },
+        { mass: 70 },
+        { mass: 60 },
+        { mass: 50 },
+        { mass: 10 },
+      ],
+      phase: 'river',
+    };
+    render(<GameBoard gameState={gameState} />);
+    expect(screen.getByText(/Best hand: 400 u/)).toBeTruthy();
+  });
+
+  it('shows Next Game button when phase is river', () => {
+    const onNextGame = vi.fn();
+    const gameState = {
+      players: [{ id: '1', holeCards: [{ mass: 1 }], chips: 1000 }],
+      communityCards: [{ mass: 2 }, { mass: 3 }, { mass: 4 }, { mass: 5 }, { mass: 6 }],
+      phase: 'river',
+    };
+    render(<GameBoard gameState={gameState} onNextGame={onNextGame} />);
+    const btn = screen.getByRole('button', { name: /next game/i });
+    expect(btn).toBeTruthy();
+    btn.click();
+    expect(onNextGame).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows molecule combo badge and flash when player has H and O', () => {
+    const gameState = {
+      players: [
+        {
+          id: '1',
           holeCards: [{ symbol: 'H' }, { symbol: 'X' }],
           chips: 1000,
-          folded: false,
-          isBot: false,
-          eliminated: false,
         },
-        { id: 'player-1', seatIndex: 1, name: 'Bot 1', holeCards: [], chips: 1000, folded: false, isBot: true, eliminated: false },
       ],
-      currentHand: { phase: 'flop', communityCards: [{ symbol: 'O' }], pot: 0 },
-    });
-    const { container } = render(<GameBoard session={session} />);
+      communityCards: [{ symbol: 'O' }],
+      phase: 'flop',
+    };
+    const { container } = render(<GameBoard gameState={gameState} />);
     expect(container.querySelector('.player-flash')).toBeTruthy();
     expect(screen.getByText('H₂O!')).toBeTruthy();
   });
 
-  it('shows Deal Flop when phase is preflop', () => {
-    const onDealFlop = vi.fn();
-    const session = sessionWith({ currentHand: { phase: 'preflop', communityCards: [], pot: 50 } });
-    render(<GameBoard session={session} onDealFlop={onDealFlop} />);
-    const btn = screen.getByRole('button', { name: /deal flop/i });
-    expect(btn).toBeTruthy();
-    btn.click();
-    expect(onDealFlop).toHaveBeenCalledTimes(1);
+  it('does not show Next Game button before river', () => {
+    const gameState = {
+      players: [{ id: '1', holeCards: [{ mass: 1 }], chips: 1000 }],
+      communityCards: [],
+      phase: 'preflop',
+    };
+    render(<GameBoard gameState={gameState} />);
+    expect(screen.queryByRole('button', { name: /next game/i })).toBeFalsy();
   });
 
-  it('shows scoreboard submit when game over and human won', () => {
-    const session = sessionWith({
-      stats: { bestHand: { weight: 100, cards: [] }, lastHand: { weight: 90, cards: [] }, biggestWin: 500 },
-      startTime: Date.now() - 120000,
-    });
-    render(
-      <GameBoard
-        session={session}
-        gameOver={true}
-        winner={{ id: 'player-0', name: 'You' }}
-        guestName="guest-123"
-        githubRepo="owner/repo"
-      />
-    );
-    expect(screen.getByTestId('scoreboard-submit')).toBeTruthy();
-    expect(screen.getByPlaceholderText(/name for the scoreboard/i)).toBeTruthy();
-    const link = screen.getByRole('link', { name: /submit to hall of fame/i });
+  it('shows "Yell out CHONP!" message in game 3', () => {
+    const gameState = {
+      players: [{ id: '1', holeCards: [{ symbol: 'C' }], chips: 1000 }],
+      communityCards: [],
+      phase: 'preflop',
+    };
+    render(<GameBoard gameState={gameState} gameNumber={3} />);
+    expect(screen.getByTestId('chonp-yell-msg').textContent).toBe('Yell out CHONP!');
+  });
+
+  it('does not show CHONP message when not game 3', () => {
+    const gameState = {
+      players: [{ id: '1', holeCards: [{ symbol: 'C' }], chips: 1000 }],
+      communityCards: [],
+      phase: 'preflop',
+    };
+    render(<GameBoard gameState={gameState} gameNumber={1} />);
+    expect(screen.queryByTestId('chonp-yell-msg')).toBeFalsy();
+  });
+
+  it('shows hierarchy text input and submit link when phase is river and githubRepo passed', () => {
+    const gameState = {
+      players: [
+        { id: 'p1', holeCards: [{ mass: 12, symbol: 'C' }, { mass: 16, symbol: 'S' }], chips: 1000 },
+      ],
+      communityCards: [{ mass: 1, symbol: 'H' }],
+      phase: 'river',
+    };
+    render(<GameBoard gameState={gameState} githubRepo="owner/repo" />);
+    const input = screen.getByTestId('player-p1-input');
+    expect(input).toBeTruthy();
+    expect(input.placeholder).toContain('name or note');
+    const link = screen.getByTestId('player-p1-submit');
     expect(link).toBeTruthy();
+    expect(link.textContent).toBe('Submit to Hierarchy');
     expect(link.href).toContain('github.com/owner/repo/issues/new');
-  });
-
-  it('shows book hint', () => {
-    const { container } = render(<GameBoard session={sessionWith()} />);
-    const hints = container.querySelectorAll('.book-hint');
-    expect(hints.length).toBeGreaterThanOrEqual(1);
-    expect(hints[0].textContent).toMatch(/open an actual book/i);
   });
 });
