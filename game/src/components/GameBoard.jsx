@@ -1,49 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from './Card.jsx';
-import { getBestHand, getMoleculeCombo, getWinner, getMinOpenBet, getMinRaiseTo, STARTING_CHIPS } from '../game/gameLogic.js';
-
-function buildHierarchyIssueUrl(repo, playerId, playerData, bestHand) {
-  const { cards, weight } = bestHand;
-  const handStr = cards.map((c) => `${c.symbol} (${c.mass ?? c.number}u)`).join(', ');
-  const title = `Best hand: ${weight} u — ${playerData?.trim() || playerId}`;
-  const body = [
-    '## Player',
-    playerData?.trim() || playerId,
-    '',
-    '## Best Hand',
-    `**Weight:** ${weight} u`,
-    `**Cards:** ${handStr}`,
-    '',
-    '_Submitted from Periodic Table Poker game_',
-  ].join('\n');
-  const base = `https://github.com/${repo}/issues/new`;
-  return `${base}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-}
-
-function buildScoreboardIssueUrl(repo, playerName, timeMs, bestHandWeight, lastHandWeight, biggestWin) {
-  const timeStr = `${Math.floor(timeMs / 60000)}m ${Math.floor((timeMs % 60000) / 1000)}s`;
-  const title = `Scoreboard: ${playerName?.trim() || 'Winner'} — ${timeStr}`;
-  const body = [
-    '## Winner',
-    playerName?.trim() || 'Anonymous',
-    '',
-    '## Time',
-    timeStr,
-    '',
-    '## Best hand (session)',
-    `${bestHandWeight} u`,
-    '',
-    '## Last hand (winning)',
-    `${lastHandWeight} u`,
-    '',
-    '## Biggest single pot won',
-    `${biggestWin}`,
-    '',
-    '_Submitted from Periodic Table Poker — won all 10k coins_',
-  ].join('\n');
-  const base = `https://github.com/${repo}/issues/new`;
-  return `${base}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-}
+import { getBestHand, getMoleculeCombo, getMinOpenBet, getMinRaiseTo } from '../game/gameLogic.js';
+import { formatFirebaseError } from '../multiplayer/core.js';
+import {
+  shouldShowMoleculeScoreboard,
+  submitMoleculeScore,
+  moleculeLabel,
+} from '../scoreboard/scoreboard.js';
 
 const HUMAN_INDEX = 0;
 const NUM_PLAYERS = 5;
@@ -63,7 +26,7 @@ function getSeatPosition(seatIndex) {
   return { left, top, isTop, infoSide };
 }
 
-export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, onNextHand, isGameOver, githubRepo, humanIndex = HUMAN_INDEX, isMultiplayer = false, openCards = false, playerNames = null }) {
+export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, onNextHand, isGameOver, githubRepo, humanIndex = HUMAN_INDEX, isMultiplayer = false, openCards = false, playerNames = null, onSubmitMoleculeScore = submitMoleculeScore }) {
   if (!gameState) {
     return (
       <div className="game-board" data-testid="game-board">
@@ -108,8 +71,10 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
 
   const showCardsOpen = isShowdown || !isMultiplayer || openCards;
 
-  const [playerData, setPlayerData] = useState({});
-  const setDataFor = (playerId, value) => setPlayerData((prev) => ({ ...prev, [playerId]: value }));
+  const [scoreboardName, setScoreboardName] = useState('');
+  const [scoreboardSubmitting, setScoreboardSubmitting] = useState(false);
+  const [scoreboardSubmitted, setScoreboardSubmitted] = useState(false);
+  const [scoreboardError, setScoreboardError] = useState(null);
   const [flashingWinnerIndex, setFlashingWinnerIndex] = useState(null);
   const [playerTimeRemaining, setPlayerTimeRemaining] = useState(null);
   const riverAllInTriggered = useRef(false);
@@ -167,7 +132,41 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   }, [isBotTurn, needsAutoAdvance, currentPlayerIndex, onBotTurn, isShowdown]);
 
   const lastHandWeight = you && isShowdown ? getBestHand(you.holeCards, communityCards).weight : 0;
-  const timeMs = gameState.gameStartTime ? Date.now() - gameState.gameStartTime : 0;
+
+  const showMoleculeScoreboard = shouldShowMoleculeScoreboard({
+    isShowdown,
+    humanIndex,
+    winnerIndex,
+    winnerIndices,
+    winnerReason,
+    gameNumber,
+    isMultiplayer,
+  });
+  const scoreboardHandKey = showMoleculeScoreboard ? `${gameNumber}-${winnerReason}` : null;
+
+  useEffect(() => {
+    setScoreboardSubmitted(false);
+    setScoreboardError(null);
+    setScoreboardSubmitting(false);
+  }, [scoreboardHandKey]);
+
+  const handleScoreboardSubmit = async () => {
+    setScoreboardError(null);
+    setScoreboardSubmitting(true);
+    try {
+      await onSubmitMoleculeScore({
+        displayName: scoreboardName,
+        molecule: winnerReason,
+        gameNumber,
+        handWeight: lastHandWeight,
+      });
+      setScoreboardSubmitted(true);
+    } catch (err) {
+      setScoreboardError(formatFirebaseError(err));
+    } finally {
+      setScoreboardSubmitting(false);
+    }
+  };
 
   const renderSeat = (player, seatIndex, displayName, isDealer) => {
     if (!player) return null;
@@ -207,25 +206,6 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
             )}
             {comboLabel && !folded && <div className="player-combo-badge">{comboLabel}!</div>}
             {!folded && showHandInfo && <div className="player-best-hand">Best hand: {bestHand.weight} u</div>}
-            {isShowdown && isGameOver && isYou && you.chips > 0 && (
-              <div className="player-scoreboard">
-                <input
-                  type="text"
-                  placeholder="Your name for scoreboard"
-                  value={playerData.scoreboardName ?? ''}
-                  onChange={(e) => setDataFor('scoreboardName', e.target.value)}
-                  className="player-hierarchy-input"
-                />
-                <a
-                  href={buildScoreboardIssueUrl(githubRepo, playerData.scoreboardName, timeMs, gameState.sessionBestHand || 0, lastHandWeight, gameState.sessionBiggestPot || 0)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-hierarchy"
-                >
-                  Submit to Scoreboard
-                </a>
-              </div>
-            )}
           </div>
           <div className="seat-cards">
             <div className="player-cards">
@@ -269,6 +249,43 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
                 ? 'You are out of atomcoins.'
                 : `${winnerName || 'You'} win${winnerName && winnerName !== 'You' ? 's' : ''} the game!`}
             </p>
+          )}
+          {showMoleculeScoreboard && (
+            <div className="molecule-scoreboard" data-testid="molecule-scoreboard">
+              <p className="molecule-scoreboard-hint">
+                You won with {moleculeLabel(winnerReason)}! Add your name to the scoreboard.
+              </p>
+              {scoreboardSubmitted ? (
+                <p className="molecule-scoreboard-done" data-testid="molecule-scoreboard-submitted">Submitted!</p>
+              ) : (
+                <div className="molecule-scoreboard-form">
+                  <input
+                    type="text"
+                    placeholder="Your name for scoreboard"
+                    value={scoreboardName}
+                    onChange={(e) => setScoreboardName(e.target.value)}
+                    className="player-hierarchy-input"
+                    data-testid="molecule-scoreboard-name"
+                    disabled={scoreboardSubmitting}
+                  />
+                  <button
+                    type="button"
+                    className="btn-primary btn-scoreboard-submit"
+                    onClick={handleScoreboardSubmit}
+                    disabled={scoreboardSubmitting}
+                    data-testid="molecule-scoreboard-submit"
+                  >
+                    {scoreboardSubmitting ? 'Submitting…' : 'Submit'}
+                  </button>
+                </div>
+              )}
+              {scoreboardError && (
+                <p className="molecule-scoreboard-err" data-testid="molecule-scoreboard-error">{scoreboardError}</p>
+              )}
+              <a href="/scoreboard.html" className="btn-secondary btn-view-scoreboard" data-testid="view-scoreboard-link">
+                View scoreboard
+              </a>
+            </div>
           )}
           <div className="showdown-cta">
             {onNextHand ? (

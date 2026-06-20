@@ -420,7 +420,6 @@
   cursor: pointer;
 }
 .btn-allin:hover { background: #15803d; }
-.player-scoreboard { margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 
 .chonp-yell-msg.poker-view-msg,
 .real-game-msg.poker-view-msg {
@@ -824,4 +823,120 @@ header h1 {
 .btn-refresh-games {
   font-size: 0.85rem;
   padding: 0.35rem 0.75rem;
+}
+
+/* Molecule scoreboard (in-game submit) */
+.molecule-scoreboard {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+.molecule-scoreboard-hint {
+  margin: 0 0 0.75rem;
+  color: #fcd34d;
+  font-weight: 600;
+}
+.molecule-scoreboard-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.molecule-scoreboard-done {
+  margin: 0.5rem 0;
+  color: #22c55e;
+  font-weight: 700;
+}
+.molecule-scoreboard-err {
+  margin: 0.5rem 0;
+  color: #f87171;
+  font-size: 0.875rem;
+}
+.btn-view-scoreboard,
+.btn-view-scoreboard-home {
+  display: inline-block;
+  margin-top: 0.35rem;
+  text-decoration: none;
+  text-align: center;
+}
+
+/* Standalone scoreboard page */
+.scoreboard-page .scoreboard-main {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+.scoreboard-title {
+  font-size: 1.75rem;
+  margin: 0 0 1rem;
+  color: #e5e7eb;
+}
+.scoreboard-loading {
+  color: #9ca3af;
+}
+.scoreboard-err {
+  color: #f87171;
+}
+.scoreboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.scoreboard-tab {
+  padding: 0.5rem 1rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  background: #1f2937;
+  color: #d1d5db;
+  cursor: pointer;
+  font-weight: 600;
+}
+.scoreboard-tab.active {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+}
+.scoreboard-tab-count {
+  font-weight: 400;
+  opacity: 0.8;
+  margin-left: 0.25rem;
+}
+.scoreboard-table-wrap {
+  overflow-x: auto;
+}
+.scoreboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.scoreboard-table th,
+.scoreboard-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #374151;
+}
+.scoreboard-table th {
+  color: #9ca3af;
+  font-weight: 600;
+}
+.scoreboard-empty {
+  color: #9ca3af;
+  margin: 1rem 0;
+}
+.scoreboard-back {
+  margin-top: 2rem;
+}
+.scoreboard-back a {
+  color: #22d3ee;
+  text-decoration: none;
+  font-weight: 500;
+}
+.scoreboard-back a:hover {
+  text-decoration: underline;
 }

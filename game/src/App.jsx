@@ -133,6 +133,9 @@ export default function App() {
             >
               Play Online
             </button>
+            <a href="/scoreboard.html" className="btn-secondary btn-view-scoreboard-home" data-testid="view-scoreboard-home">
+              View Scoreboard
+            </a>
           </div>
         </main>
       </div>

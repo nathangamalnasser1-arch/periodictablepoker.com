@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { GameBoard } from './GameBoard.jsx';
 
 describe('GameBoard', () => {
@@ -245,23 +245,123 @@ describe('GameBoard', () => {
     expect(msg.textContent).toContain('check');
   });
 
-  it('shows scoreboard submit when game over and human won', () => {
+  it('shows molecule scoreboard submit when human wins with CHONP at showdown (game 4+)', () => {
     const gameState = {
       players: [
-        { id: 'player-0', holeCards: [{ mass: 12, symbol: 'C' }, { mass: 16, symbol: 'S' }], chips: 1000, folded: false },
+        { id: 'player-0', holeCards: [{ symbol: 'C' }, { symbol: 'H' }], chips: 1000, folded: false },
+        { id: 'player-1', holeCards: [{ symbol: 'Fe' }, { symbol: 'Cu' }], chips: 900, folded: false },
       ],
-      communityCards: [{ mass: 1, symbol: 'H' }],
+      communityCards: [
+        { symbol: 'O' }, { symbol: 'N' }, { symbol: 'P' }, { mass: 1 }, { mass: 2 },
+      ],
       phase: 'showdown',
       dealerIndex: 0,
-      gameStartTime: Date.now() - 120000,
-      sessionBestHand: 28,
-      sessionBiggestPot: 500,
+      winnerIndex: 0,
+      winnerReason: 'chonp',
     };
-    render(<GameBoard gameState={gameState} gameNumber={5} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={true} githubRepo="owner/repo" />);
-    expect(screen.getByPlaceholderText(/name for scoreboard/i)).toBeTruthy();
-    const link = screen.getByRole('link', { name: /submit to scoreboard/i });
-    expect(link).toBeTruthy();
-    expect(link.href).toContain('github.com/owner/repo/issues/new');
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+      />
+    );
+    expect(screen.getByTestId('molecule-scoreboard')).toBeTruthy();
+    expect(screen.getByTestId('molecule-scoreboard-name')).toBeTruthy();
+    expect(screen.getByTestId('molecule-scoreboard-submit')).toBeTruthy();
+    expect(screen.getByTestId('view-scoreboard-link').getAttribute('href')).toBe('/scoreboard.html');
+  });
+
+  it('does not show molecule scoreboard when human wins with mass only', () => {
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ mass: 100 }, { mass: 90 }], chips: 1000, folded: false },
+        { id: 'player-1', holeCards: [{ mass: 1 }, { mass: 2 }], chips: 900, folded: false },
+      ],
+      communityCards: [{ mass: 80 }, { mass: 70 }, { mass: 60 }, { mass: 50 }, { mass: 10 }],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 0,
+      winnerReason: 'mass',
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={5}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={true}
+      />
+    );
+    expect(screen.queryByTestId('molecule-scoreboard')).toBeFalsy();
+  });
+
+  it('does not show molecule scoreboard when human lost despite having NaCl', () => {
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ symbol: 'Na' }, { symbol: 'Cl' }], chips: 900, folded: false },
+        { id: 'player-1', holeCards: [{ symbol: 'C' }, { symbol: 'H' }], chips: 1100, folded: false },
+      ],
+      communityCards: [
+        { symbol: 'O' }, { symbol: 'N' }, { symbol: 'P' }, { mass: 1 }, { mass: 2 },
+      ],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 1,
+      winnerReason: 'chonp',
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+      />
+    );
+    expect(screen.queryByTestId('molecule-scoreboard')).toBeFalsy();
+  });
+
+  it('calls submitMoleculeScore when Submit is clicked', async () => {
+    const submit = vi.fn().mockResolvedValue(undefined);
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ symbol: 'Na' }, { symbol: 'Cl' }], chips: 1000, folded: false },
+        { id: 'player-1', holeCards: [{ mass: 1 }, { mass: 2 }], chips: 900, folded: false },
+      ],
+      communityCards: [{ mass: 3 }, { mass: 4 }, { mass: 5 }, { mass: 6 }, { mass: 7 }],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 0,
+      winnerReason: 'nacl',
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+        onSubmitMoleculeScore={submit}
+      />
+    );
+    const input = screen.getByTestId('molecule-scoreboard-name');
+    fireEvent.change(input, { target: { value: 'Alice' } });
+    fireEvent.click(screen.getByTestId('molecule-scoreboard-submit'));
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith({
+        displayName: 'Alice',
+        molecule: 'nacl',
+        gameNumber: 4,
+        handWeight: expect.any(Number),
+      });
+    });
   });
 
   it('hides opponent hole cards in multiplayer when openCards is false', () => {
