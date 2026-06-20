@@ -37,6 +37,10 @@ import {
   getTurnSecondsRemaining,
   getTimeoutAction,
 } from '../game/turnTimeout.js';
+import {
+  getPrimaryBotWinnerIndex,
+  playDogBark,
+} from '../audio/dogBark.js';
 
 const HUMAN_INDEX = 0;
 const NUM_PLAYERS = 5;
@@ -129,6 +133,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const [scoreboardSubmitted, setScoreboardSubmitted] = useState(false);
   const [scoreboardError, setScoreboardError] = useState(null);
   const [flashingWinnerIndex, setFlashingWinnerIndex] = useState(null);
+  const [barkingWinnerIndex, setBarkingWinnerIndex] = useState(null);
   const [clockTick, setClockTick] = useState(0);
   const [houseRulesOpen, setHouseRulesOpen] = useState(false);
   const [houseRulesTab, setHouseRulesTab] = useState('rules');
@@ -163,12 +168,29 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const showdownWinnerIndices = isShowdown && indices.length > 0 ? indices : [];
   useEffect(() => {
     if (showdownWinnerIndices.length > 0) {
-      setFlashingWinnerIndex(showdownWinnerIndices[0]);
-      const t = setTimeout(() => setFlashingWinnerIndex(null), 4500);
+      const primaryWinner = showdownWinnerIndices[0];
+      setFlashingWinnerIndex(primaryWinner);
+      const botWinner = getPrimaryBotWinnerIndex({
+        winnerIndices: showdownWinnerIndices,
+        winnerIndex: primaryWinner,
+        humanIndex,
+        isMultiplayer,
+      });
+      if (botWinner != null) {
+        setBarkingWinnerIndex(botWinner);
+        playDogBark();
+      } else {
+        setBarkingWinnerIndex(null);
+      }
+      const t = setTimeout(() => {
+        setFlashingWinnerIndex(null);
+        setBarkingWinnerIndex(null);
+      }, 4500);
       return () => clearTimeout(t);
     }
     setFlashingWinnerIndex(null);
-  }, [isShowdown, winnerIndex]);
+    setBarkingWinnerIndex(null);
+  }, [isShowdown, winnerIndex, humanIndex, isMultiplayer]);
 
   useEffect(() => {
     if (isShowdown) return undefined;
@@ -280,8 +302,9 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
         style={{ left: `${left}%`, top: `${top}%` }}
       >
         <div
-          className={`seat-dog-portrait ${isYou ? 'seat-dog-portrait-you' : ''}`}
+          className={`seat-dog-portrait ${isYou ? 'seat-dog-portrait-you' : ''} ${barkingWinnerIndex === seatIndex ? 'seat-dog-portrait-bark' : ''}`}
           data-testid={`dog-avatar-${seatIndex}`}
+          aria-live={barkingWinnerIndex === seatIndex ? 'polite' : undefined}
           style={{
             transform: `translate(calc(-50% + ${portraitDx}px), calc(-50% + ${portraitDy}px))`,
           }}

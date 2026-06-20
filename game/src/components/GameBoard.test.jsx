@@ -1,7 +1,17 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+vi.mock('../audio/dogBark.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    playDogBark: vi.fn(),
+  };
+});
+
 import { GameBoard } from './GameBoard.jsx';
+import { playDogBark } from '../audio/dogBark.js';
 
 describe('GameBoard', () => {
   it('shows best hand weight below each player cards', () => {
@@ -633,5 +643,61 @@ describe('GameBoard', () => {
     );
     expect(screen.getByTestId('timeout-toast').textContent).toContain('folded');
     expect(screen.getByTestId('timeout-toast').textContent).toContain('(time)');
+  });
+
+  it('barks when a solo bot wins at showdown', () => {
+    vi.mocked(playDogBark).mockClear();
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ mass: 1 }], chips: 500, folded: false },
+        { id: 'player-1', holeCards: [{ mass: 50 }], chips: 1500, folded: false },
+      ],
+      communityCards: [{ mass: 2 }, { mass: 3 }, { mass: 4 }, { mass: 5 }, { mass: 6 }],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 1,
+      winnerIndices: [1],
+      winnerReason: 'mass',
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+      />
+    );
+    expect(playDogBark).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('dog-avatar-1').className).toMatch(/seat-dog-portrait-bark/);
+  });
+
+  it('does not bark when the human wins at showdown', () => {
+    vi.mocked(playDogBark).mockClear();
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ mass: 50 }], chips: 1500, folded: false },
+        { id: 'player-1', holeCards: [{ mass: 1 }], chips: 500, folded: false },
+      ],
+      communityCards: [{ mass: 2 }, { mass: 3 }, { mass: 4 }, { mass: 5 }, { mass: 6 }],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 0,
+      winnerIndices: [0],
+      winnerReason: 'mass',
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+      />
+    );
+    expect(playDogBark).not.toHaveBeenCalled();
+    expect(screen.getByTestId('dog-avatar-0').className).not.toMatch(/seat-dog-portrait-bark/);
   });
 });

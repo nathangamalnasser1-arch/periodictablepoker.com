@@ -313,6 +313,41 @@
     0 4px 20px rgba(0, 0, 0, 0.55);
 }
 
+.seat-dog-portrait-bark .seat-dog-portrait-img {
+  animation: dog-bark 0.32s ease-in-out 8;
+  transform-origin: center bottom;
+}
+
+.seat-dog-portrait-bark::after {
+  content: 'Woof!';
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ptp-ink);
+  background: var(--ptp-parchment);
+  border: 2px solid var(--ptp-brass-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  animation: dog-bark-label 0.32s ease-in-out 8;
+  white-space: nowrap;
+}
+
+@keyframes dog-bark {
+  0%, 100% { transform: scale(1) translateY(0); }
+  35% { transform: scale(1.1, 0.9) translateY(3px); }
+  70% { transform: scale(1.06, 0.94) translateY(1px); }
+}
+
+@keyframes dog-bark-label {
+  0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.12); }
+}
+
 .seat-content {
   position: absolute;
   left: 0;
