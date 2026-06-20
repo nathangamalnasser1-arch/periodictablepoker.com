@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('../audio/dogBark.js', async (importOriginal) => {
@@ -14,6 +14,14 @@ import { GameBoard } from './GameBoard.jsx';
 import { playDogBark } from '../audio/dogBark.js';
 
 describe('GameBoard', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it('shows best hand weight below each player cards', () => {
     const gameState = {
       players: [
@@ -647,6 +655,7 @@ describe('GameBoard', () => {
 
   it('barks when a solo bot wins at showdown', () => {
     vi.mocked(playDogBark).mockClear();
+    localStorage.removeItem('ptp-dog-bark-enabled');
     const gameState = {
       players: [
         { id: 'player-0', holeCards: [{ mass: 1 }], chips: 500, folded: false },
@@ -699,5 +708,80 @@ describe('GameBoard', () => {
     );
     expect(playDogBark).not.toHaveBeenCalled();
     expect(screen.getByTestId('dog-avatar-0').className).not.toMatch(/seat-dog-portrait-bark/);
+  });
+
+  it('does not bark after the first solo hand unless enabled', () => {
+    vi.mocked(playDogBark).mockClear();
+    localStorage.removeItem('ptp-dog-bark-enabled');
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ mass: 1 }], chips: 500, folded: false },
+        { id: 'player-1', holeCards: [{ mass: 50 }], chips: 1500, folded: false },
+      ],
+      communityCards: [{ mass: 2 }, { mass: 3 }, { mass: 4 }, { mass: 5 }, { mass: 6 }],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 1,
+      winnerIndices: [1],
+      winnerReason: 'mass',
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={5}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+      />
+    );
+    expect(playDogBark).not.toHaveBeenCalled();
+    expect(screen.getByTestId('dog-avatar-1').className).not.toMatch(/seat-dog-portrait-bark/);
+  });
+
+  it('shows dog bark toggle checked on the first solo hand', () => {
+    localStorage.removeItem('ptp-dog-bark-enabled');
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false }],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+      />
+    );
+    fireEvent.click(screen.getByTestId('house-rules-open'));
+    expect(screen.getByTestId('dog-bark-toggle').checked).toBe(true);
+  });
+
+  it('persists dog bark preference from house rules toggle', () => {
+    localStorage.removeItem('ptp-dog-bark-enabled');
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false }],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={5}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+      />
+    );
+    fireEvent.click(screen.getByTestId('house-rules-open'));
+    expect(screen.getByTestId('dog-bark-toggle').checked).toBe(false);
+    fireEvent.click(screen.getByTestId('dog-bark-toggle'));
+    expect(localStorage.getItem('ptp-dog-bark-enabled')).toBe('true');
   });
 });

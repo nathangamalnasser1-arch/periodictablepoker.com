@@ -1,3 +1,29 @@
+export const DOG_BARK_SRC = '/audio/dog-bark.mp3';
+export const DOG_BARK_PREF_KEY = 'ptp-dog-bark-enabled';
+
+/** Bark is on by default for the first solo hand (game 4). */
+export function getDefaultDogBarkEnabled(gameNumber) {
+  return gameNumber === 4;
+}
+
+export function readDogBarkPreference() {
+  if (typeof localStorage === 'undefined') return null;
+  const raw = localStorage.getItem(DOG_BARK_PREF_KEY);
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  return null;
+}
+
+export function writeDogBarkPreference(enabled) {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(DOG_BARK_PREF_KEY, enabled ? 'true' : 'false');
+}
+
+export function isDogBarkEnabled(gameNumber, preference = readDogBarkPreference()) {
+  if (preference !== null) return preference;
+  return getDefaultDogBarkEnabled(gameNumber);
+}
+
 /** Primary winner seat index when a solo bot wins the hand; null otherwise. */
 export function getPrimaryBotWinnerIndex({
   winnerIndices,
@@ -14,71 +40,42 @@ export function getPrimaryBotWinnerIndex({
   return primary;
 }
 
-let sharedAudioContext = null;
-
-function getAudioContext() {
-  if (typeof window === 'undefined') return null;
-  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextCtor) return null;
-  if (!sharedAudioContext) {
-    sharedAudioContext = new AudioContextCtor();
-  }
-  return sharedAudioContext;
+export function getBotWinnerForBark({
+  gameNumber,
+  winnerIndices,
+  winnerIndex,
+  humanIndex,
+  isMultiplayer = false,
+  dogBarkEnabled = isDogBarkEnabled(gameNumber),
+}) {
+  if (!dogBarkEnabled) return null;
+  return getPrimaryBotWinnerIndex({
+    winnerIndices,
+    winnerIndex,
+    humanIndex,
+    isMultiplayer,
+  });
 }
 
-/** Synthesized short bark — no asset file required. */
+let barkAudio = null;
+
+function getBarkAudio() {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') return null;
+  if (!barkAudio) {
+    barkAudio = new Audio(DOG_BARK_SRC);
+    barkAudio.preload = 'auto';
+  }
+  return barkAudio;
+}
+
 export async function playDogBark() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
+  const audio = getBarkAudio();
+  if (!audio) return;
 
-  if (ctx.state === 'suspended') {
-    try {
-      await ctx.resume();
-    } catch {
-      return;
-    }
+  try {
+    audio.currentTime = 0;
+    await audio.play();
+  } catch {
+    // Autoplay blocked or asset failed to load.
   }
-
-  const start = ctx.currentTime;
-  const duration = 0.24;
-
-  const osc = ctx.createOscillator();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(300, start);
-  osc.frequency.exponentialRampToValueAtTime(110, start + duration);
-
-  const oscGain = ctx.createGain();
-  oscGain.gain.setValueAtTime(0.0001, start);
-  oscGain.gain.exponentialRampToValueAtTime(0.28, start + 0.015);
-  oscGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-
-  const bufferSize = Math.floor(ctx.sampleRate * duration);
-  const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const samples = noiseBuffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i += 1) {
-    samples[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
-  }
-
-  const noise = ctx.createBufferSource();
-  noise.buffer = noiseBuffer;
-
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = 820;
-  filter.Q.value = 0.75;
-
-  const noiseGain = ctx.createGain();
-  noiseGain.gain.setValueAtTime(0.22, start);
-  noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.75);
-
-  osc.connect(oscGain);
-  oscGain.connect(ctx.destination);
-  noise.connect(filter);
-  filter.connect(noiseGain);
-  noiseGain.connect(ctx.destination);
-
-  osc.start(start);
-  osc.stop(start + duration);
-  noise.start(start);
-  noise.stop(start + duration);
 }

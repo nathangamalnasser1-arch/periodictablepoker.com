@@ -313,6 +313,21 @@
     0 4px 20px rgba(0, 0, 0, 0.55);
 }
 
+.dog-bark-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--ptp-ink);
+}
+
+.dog-bark-toggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--ptp-brass-dark);
+}
+
 .seat-dog-portrait-bark .seat-dog-portrait-img {
   animation: dog-bark 0.32s ease-in-out 8;
   transform-origin: center bottom;

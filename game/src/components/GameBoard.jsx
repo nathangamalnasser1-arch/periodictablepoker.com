@@ -39,6 +39,10 @@ import {
 } from '../game/turnTimeout.js';
 import {
   getPrimaryBotWinnerIndex,
+  getBotWinnerForBark,
+  isDogBarkEnabled,
+  readDogBarkPreference,
+  writeDogBarkPreference,
   playDogBark,
 } from '../audio/dogBark.js';
 
@@ -134,6 +138,8 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const [scoreboardError, setScoreboardError] = useState(null);
   const [flashingWinnerIndex, setFlashingWinnerIndex] = useState(null);
   const [barkingWinnerIndex, setBarkingWinnerIndex] = useState(null);
+  const [dogBarkPreference, setDogBarkPreference] = useState(() => readDogBarkPreference());
+  const dogBarkEnabled = isDogBarkEnabled(gameNumber, dogBarkPreference);
   const [clockTick, setClockTick] = useState(0);
   const [houseRulesOpen, setHouseRulesOpen] = useState(false);
   const [houseRulesTab, setHouseRulesTab] = useState('rules');
@@ -170,11 +176,13 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
     if (showdownWinnerIndices.length > 0) {
       const primaryWinner = showdownWinnerIndices[0];
       setFlashingWinnerIndex(primaryWinner);
-      const botWinner = getPrimaryBotWinnerIndex({
+      const botWinner = getBotWinnerForBark({
+        gameNumber,
         winnerIndices: showdownWinnerIndices,
         winnerIndex: primaryWinner,
         humanIndex,
         isMultiplayer,
+        dogBarkEnabled,
       });
       if (botWinner != null) {
         setBarkingWinnerIndex(botWinner);
@@ -190,7 +198,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
     }
     setFlashingWinnerIndex(null);
     setBarkingWinnerIndex(null);
-  }, [isShowdown, winnerIndex, humanIndex, isMultiplayer]);
+  }, [isShowdown, winnerIndex, humanIndex, isMultiplayer, gameNumber, dogBarkEnabled]);
 
   useEffect(() => {
     if (isShowdown) return undefined;
@@ -472,6 +480,22 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
                     (or go all-in) to stay in or fold. When everyone still in is all-in, no further bets — remaining
                     community cards are dealt, then showdown.
                   </p>
+                </section>
+                <section className="rules-section">
+                  <h3 className="rules-section-title">Sound</h3>
+                  <label className="dog-bark-toggle" data-testid="dog-bark-toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={dogBarkEnabled}
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        writeDogBarkPreference(enabled);
+                        setDogBarkPreference(enabled);
+                      }}
+                      data-testid="dog-bark-toggle"
+                    />
+                    Dog barks when a bot wins
+                  </label>
                 </section>
                 {gameNumber >= 4 && (
                   <section className="rules-section">

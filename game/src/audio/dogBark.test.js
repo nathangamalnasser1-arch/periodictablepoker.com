@@ -1,5 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getPrimaryBotWinnerIndex, playDogBark } from './dogBark.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  DOG_BARK_SRC,
+  DOG_BARK_PREF_KEY,
+  getDefaultDogBarkEnabled,
+  readDogBarkPreference,
+  writeDogBarkPreference,
+  isDogBarkEnabled,
+  getPrimaryBotWinnerIndex,
+  getBotWinnerForBark,
+  playDogBark,
+} from './dogBark.js';
+
+describe('dog bark preference', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('defaults on for the first solo hand (game 4)', () => {
+    expect(getDefaultDogBarkEnabled(4)).toBe(true);
+    expect(getDefaultDogBarkEnabled(5)).toBe(false);
+    expect(isDogBarkEnabled(4)).toBe(true);
+    expect(isDogBarkEnabled(5)).toBe(false);
+  });
+
+  it('persists user preference over defaults', () => {
+    writeDogBarkPreference(false);
+    expect(readDogBarkPreference()).toBe(false);
+    expect(isDogBarkEnabled(4)).toBe(false);
+
+    writeDogBarkPreference(true);
+    expect(isDogBarkEnabled(5)).toBe(true);
+  });
+
+  it('returns bot winner only when bark is enabled', () => {
+    expect(getBotWinnerForBark({
+      gameNumber: 4,
+      winnerIndices: [2],
+      humanIndex: 0,
+    })).toBe(2);
+
+    expect(getBotWinnerForBark({
+      gameNumber: 5,
+      winnerIndices: [2],
+      humanIndex: 0,
+      dogBarkEnabled: false,
+    })).toBeNull();
+  });
+});
 
 describe('getPrimaryBotWinnerIndex', () => {
   it('returns bot seat when a solo bot wins', () => {
@@ -41,7 +92,7 @@ describe('playDogBark', () => {
     vi.restoreAllMocks();
   });
 
-  it('does not throw when Web Audio is unavailable', async () => {
+  it('does not throw when audio is unavailable', async () => {
     const original = globalThis.window;
     // @ts-expect-error test shim
     delete globalThis.window;
@@ -49,50 +100,27 @@ describe('playDogBark', () => {
     globalThis.window = original;
   });
 
-  it('plays through AudioContext when available', async () => {
-    const start = vi.fn();
-    const stop = vi.fn();
-    const connect = vi.fn();
-    const exponentialRampToValueAtTime = vi.fn();
-    const setValueAtTime = vi.fn();
-
-    const node = () => ({
-      connect,
-      start,
-      stop,
-      frequency: { setValueAtTime, exponentialRampToValueAtTime },
-      gain: { setValueAtTime, exponentialRampToValueAtTime },
-      type: '',
-      buffer: null,
-    });
-
-    const ctx = {
-      state: 'running',
-      currentTime: 0,
-      sampleRate: 44100,
-      destination: {},
-      resume: vi.fn().mockResolvedValue(undefined),
-      createOscillator: vi.fn(node),
-      createGain: vi.fn(node),
-      createBuffer: vi.fn(() => ({ getChannelData: () => new Float32Array(8) })),
-      createBufferSource: vi.fn(node),
-      createBiquadFilter: vi.fn(() => ({ connect, type: '', frequency: { value: 0 }, Q: { value: 0 } })),
-    };
-
-    class MockAudioContext {
-      constructor() {
-        return ctx;
+  it('plays the dog bark mp3 when audio is available', async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    let audioInstance = null;
+    class MockAudio {
+      constructor(src) {
+        this.src = src;
+        this.currentTime = 0;
+        this.preload = '';
+        audioInstance = this;
       }
+
+      play = play;
     }
 
-    vi.stubGlobal('window', {
-      AudioContext: MockAudioContext,
-    });
+    vi.stubGlobal('window', { Audio: MockAudio });
+    vi.stubGlobal('Audio', MockAudio);
 
     await playDogBark();
 
-    expect(ctx.createOscillator).toHaveBeenCalled();
-    expect(start).toHaveBeenCalled();
-    expect(stop).toHaveBeenCalled();
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(audioInstance?.src).toBe(DOG_BARK_SRC);
+    expect(audioInstance?.currentTime).toBe(0);
   });
 });
