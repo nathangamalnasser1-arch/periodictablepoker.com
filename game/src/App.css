@@ -662,21 +662,37 @@ header h1 {
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
+a.card.card-wiki {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+a.card.card-wiki:hover {
+  box-shadow: 0 0 0 2px #22d3ee, 0 2px 8px rgba(0,0,0,0.35);
+  transform: translateY(-1px);
+}
+.card-wiki-link {
+  font-size: 0.45rem;
+  font-weight: 500;
+  opacity: 0.85;
+  margin-top: 0.15rem;
+  text-align: center;
+  line-height: 1.1;
+  padding: 0 0.15rem;
+  color: #22d3ee;
+}
+.card-light .card-wiki-link {
+  color: #0369a1;
+}
+.table-center .community-cards .card-wiki-link,
+.seat .player-cards .card-wiki-link {
+  display: none;
+}
 .card.card-light { color: #111; }
 .card-symbol { font-size: 1.5rem; }
 .card-number { font-size: 0.75rem; opacity: 0.8; }
 .card-name { font-size: 0.6rem; opacity: 0.9; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.card-wiki-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  color: inherit;
-  text-decoration: none;
-}
-.card-wiki-link:hover { text-decoration: underline; opacity: 0.95; }
 .card-facedown { background: #374151; }
 .card-back { font-size: 2rem; }
 
@@ -996,11 +1012,6 @@ header h1 {
   color: #94a3b8;
 }
 .btn-community-github {
-  display: inline-block;
-  text-decoration: none;
-  text-align: center;
-}
-.btn-periodic-placement {
   display: inline-block;
   text-decoration: none;
   text-align: center;

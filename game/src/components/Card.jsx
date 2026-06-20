@@ -1,5 +1,5 @@
 import React from 'react';
-import { elementWikiUrl } from '../data/elements.js';
+import { elementWikiUrlFromElement, resolveElementName } from '../data/elementWiki.js';
 
 /** Returns true if hex color is light (use black text) */
 function isLightColor(hex) {
@@ -22,31 +22,50 @@ export function Card({ element, faceDown = false }) {
     );
   }
 
-  const { symbol, name, number, color, wikiUrl } = element;
+  const { symbol, name, number, color } = element;
+  const wikiName = resolveElementName(element);
+  const wikiUrl = elementWikiUrlFromElement(element);
   const bg = color || '#1f2937';
   const textDark = isLightColor(bg);
-  const href = wikiUrl ?? elementWikiUrl(name);
-  const wikiTitle = name ? `${name} on Wikipedia` : 'Wikipedia';
+  const cardClass = `card ${textDark ? 'card-light' : ''}${wikiUrl ? ' card-wiki' : ''}`;
+
+  const content = (
+    <>
+      <div className="card-symbol">{symbol}</div>
+      <div className="card-number">{number}</div>
+      {name && <div className="card-name">{name}</div>}
+      {wikiUrl && (
+        <div className="card-wiki-link" aria-hidden="true">
+          Read on Wikipedia →
+        </div>
+      )}
+    </>
+  );
+
+  if (wikiUrl) {
+    return (
+      <a
+        href={wikiUrl}
+        className={cardClass}
+        data-testid={`card-${symbol}`}
+        style={{ '--card-color': bg }}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${wikiName} — Read on Wikipedia`}
+        title={`${wikiName} — Read on Wikipedia`}
+      >
+        {content}
+      </a>
+    );
+  }
 
   return (
     <div
-      className={`card ${textDark ? 'card-light' : ''}`}
+      className={cardClass}
       data-testid={`card-${symbol}`}
       style={{ '--card-color': bg }}
     >
-      <a
-        href={href}
-        className="card-wiki-link"
-        target="_blank"
-        rel="noopener noreferrer"
-        title={wikiTitle}
-        aria-label={wikiTitle}
-        data-testid={`card-wiki-${symbol}`}
-      >
-        <div className="card-symbol">{symbol}</div>
-        <div className="card-number">{number}</div>
-        {name && <div className="card-name">{name}</div>}
-      </a>
+      {content}
     </div>
   );
 }

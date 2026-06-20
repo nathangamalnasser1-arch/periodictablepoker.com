@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ELEMENTS, createDeck, shuffle, elementWikiUrl } from './elements.js';
+import { ELEMENTS, createDeck, shuffle } from './elements.js';
 
 describe('elements', () => {
   it('has 118 elements', () => {
@@ -27,17 +27,5 @@ describe('elements', () => {
     const shuffled = shuffle(deck);
     expect(shuffled).toHaveLength(118);
     expect(shuffled.map((c) => c.id).sort()).toEqual(deck.map((c) => c.id).sort());
-  });
-
-  it('elementWikiUrl links to English Wikipedia by element name', () => {
-    expect(elementWikiUrl('Hydrogen')).toBe('https://en.wikipedia.org/wiki/Hydrogen');
-    expect(elementWikiUrl('Iron')).toBe('https://en.wikipedia.org/wiki/Iron');
-    expect(elementWikiUrl('')).toBe('https://en.wikipedia.org/wiki/Periodic_table');
-  });
-
-  it('createDeck includes wikiUrl on each card', () => {
-    const deck = createDeck();
-    expect(deck[0].wikiUrl).toBe('https://en.wikipedia.org/wiki/Hydrogen');
-    expect(deck[25].wikiUrl).toBe('https://en.wikipedia.org/wiki/Iron');
   });
 });

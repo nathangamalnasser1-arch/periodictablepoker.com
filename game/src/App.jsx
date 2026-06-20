@@ -145,15 +145,6 @@ export default function App() {
             >
               Community rules (GitHub)
             </a>
-            <a
-              href="https://www.vectorstarprobabilitydynamics.com/ptgame/dist/index.html"
-              className="btn-secondary btn-periodic-placement"
-              data-testid="periodic-placement-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Periodic Placement quiz
-            </a>
           </div>
         </main>
       </div>

@@ -30,18 +30,22 @@ describe('Card', () => {
     expect(container.querySelector('.card.card-light')).toBeFalsy();
   });
 
-  it('links element to English Wikipedia', () => {
-    render(
-      <Card element={{ symbol: 'Fe', name: 'Iron', number: 26, wikiUrl: 'https://en.wikipedia.org/wiki/Iron' }} />
-    );
-    const link = screen.getByTestId('card-wiki-Fe');
-    expect(link.getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Iron');
+  it('links face-up card to Wikipedia like Periodic Placement', () => {
+    render(<Card element={{ symbol: 'Na', name: 'Sodium', number: 11 }} />);
+    const link = screen.getByTestId('card-Na');
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Sodium');
     expect(link.getAttribute('target')).toBe('_blank');
-    expect(link.getAttribute('title')).toContain('Iron');
+    expect(screen.getByText('Read on Wikipedia →')).toBeTruthy();
   });
 
-  it('does not show wiki link when face down', () => {
-    render(<Card element={{ symbol: 'H', name: 'Hydrogen', wikiUrl: 'https://en.wikipedia.org/wiki/Hydrogen' }} faceDown />);
-    expect(screen.queryByTestId('card-wiki-H')).toBeFalsy();
+  it('resolves Wikipedia URL from symbol when name omitted', () => {
+    render(<Card element={{ symbol: 'He', number: 2, color: '#d9ffff' }} />);
+    expect(screen.getByTestId('card-He').getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Helium');
+  });
+
+  it('does not link face-down cards', () => {
+    render(<Card element={{ symbol: 'H', name: 'Hydrogen' }} faceDown />);
+    expect(screen.queryByRole('link')).toBeFalsy();
   });
 });
