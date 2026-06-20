@@ -2,6 +2,7 @@ import { createDeck, shuffle } from '../data/elements.js';
 import { matchMoleculeCombo, getKnownMolecule, MASS_TIER } from '../data/knownMolecules.js';
 import { getCatalogMoleculeByIndex, MOLECULE_CATALOG_COUNT } from '../data/moleculeCatalog.js';
 import { buildMoleculeTestDeck } from './moleculeTestDeck.js';
+import { stampTurnStartedAt } from './turnTimeout.js';
 
 /** Texas Hold'em phases */
 export const PHASES = {
@@ -163,7 +164,7 @@ export function dealGame(numPlayers = 10, gameNumber = 0, winnerOverride = undef
 
   const pots = buildSidePots(totalBetThisHand, players.map((p) => p.folded));
 
-  return {
+  return stampTurnStartedAt({
     deck,
     players,
     communityCards,
@@ -183,7 +184,7 @@ export function dealGame(numPlayers = 10, gameNumber = 0, winnerOverride = undef
     lastAction: null,
     tutorial: tutorialMode,
     ...session,
-  };
+  });
 }
 
 /**
@@ -383,7 +384,7 @@ export function dealRiver(gameState) {
 }
 
 /** Whether this player can act (not folded, has chips — not all-in). */
-function canAct(state, playerIndex) {
+export function canAct(state, playerIndex) {
   const p = state.players[playerIndex];
   return p && !p.folded && p.chips > 0;
 }
@@ -412,7 +413,7 @@ export function advanceIfCurrentPlayerInvalid(state, gameNumber) {
     if (!current.folded && current.chips <= 0) {
       next.lastAction = { playerIndex: currentPlayerIndex, action: 'all-in' };
     }
-    return next;
+    return stampTurnStartedAt(next);
   }
   return null;
 }
@@ -531,7 +532,7 @@ export function playerAction(state, playerIndex, action, amount = 0) {
   if (activeCount <= 1) return next;
 
   next.currentPlayerIndex = getNextActivePlayerIndex(next, playerIndex);
-  return next;
+  return stampTurnStartedAt(next);
 }
 
 function hasCHInHole(holeCards) {
@@ -676,7 +677,7 @@ export function advanceBettingRound(state, gameNumber) {
   } else if (next.bettingRound === PHASES.RIVER) {
     next = resolveShowdown(next, gameNumber);
   }
-  return next;
+  return stampTurnStartedAt(next);
 }
 
 function resolveShowdown(state, gameNumber) {

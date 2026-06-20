@@ -27,23 +27,44 @@ import {
   githubIssuesListUrl,
   validateProposalName,
 } from '../hierarchy/hierarchy.js';
+import {
+  getDogAvatarSrc,
+  getDogAvatarAlt,
+} from '../data/dogAvatars.js';
+import {
+  TURN_TIMEOUT_SECONDS,
+  BOT_TURN_GRACE_MS,
+  getTurnSecondsRemaining,
+  getTimeoutAction,
+} from '../game/turnTimeout.js';
 
 const HUMAN_INDEX = 0;
 const NUM_PLAYERS = 5;
-const HUMAN_TURN_SECONDS = 60;
-const BOT_TURN_SAFETY_MS = 10000;
 
-/** Seat positions around oval: index 0 = bottom (you), 1..9 = clockwise. Returns { left %, top %, isTop, infoSide } */
+/** Seat positions around oval: index 0 = bottom (you), 1..4 = clockwise. */
 function getSeatPosition(seatIndex) {
   const angleDeg = -90 + (seatIndex * 360 / NUM_PLAYERS);
   const angleRad = (angleDeg * Math.PI) / 180;
-  const radiusX = 42;
-  const radiusY = 38;
+  const radiusX = 40;
+  const radiusY = 36;
   const left = 50 + radiusX * Math.cos(angleRad);
   const top = 50 + radiusY * Math.sin(angleRad);
   const isTop = top < 50;
   const infoSide = left < 50 ? 'left' : 'right';
-  return { left, top, isTop, infoSide };
+  const cos = Math.cos(angleRad);
+  const sin = Math.sin(angleRad);
+  const portraitPush = 62;
+  const contentPull = 22;
+  return {
+    left,
+    top,
+    isTop,
+    infoSide,
+    portraitDx: cos * portraitPush,
+    portraitDy: sin * portraitPush,
+    contentDx: -cos * contentPull,
+    contentDy: -sin * contentPull,
+  };
 }
 
 export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, onNextHand, isGameOver, githubRepo, humanIndex = HUMAN_INDEX, isMultiplayer = false, openCards = false, playerNames = null, onSubmitMoleculeScore = submitMoleculeScore }) {
@@ -67,8 +88,8 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const toCall = you && !you.folded ? Math.max(0, currentBet - (roundBets[humanIndex] || 0)) : 0;
   const isYourTurn = !isShowdown && currentPlayerIndex === humanIndex && you && !you.folded && you.chips > 0;
   const currentBot = !isShowdown && currentPlayerIndex !== humanIndex ? players?.[currentPlayerIndex] : null;
-  const isBotTurn = currentBot && !currentBot.folded && currentBot.chips > 0;
-  const isBotTurnAllIn = currentBot && !currentBot.folded && currentBot.chips === 0;
+  const isBotTurn = !isMultiplayer && currentBot && !currentBot.folded && currentBot.chips > 0;
+  const isBotTurnAllIn = !isMultiplayer && currentBot && !currentBot.folded && currentBot.chips === 0;
   const youAllIn = you && !you.folded && you.chips === 0;
   const currentTurnPlayer =
     !isShowdown && currentPlayerIndex != null && players?.[currentPlayerIndex] && !players[currentPlayerIndex].folded
@@ -108,7 +129,11 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const [scoreboardSubmitted, setScoreboardSubmitted] = useState(false);
   const [scoreboardError, setScoreboardError] = useState(null);
   const [flashingWinnerIndex, setFlashingWinnerIndex] = useState(null);
-  const [playerTimeRemaining, setPlayerTimeRemaining] = useState(null);
+  const [clockTick, setClockTick] = useState(0);
+  const [houseRulesOpen, setHouseRulesOpen] = useState(false);
+  const [houseRulesTab, setHouseRulesTab] = useState('rules');
+  const [realGameToastVisible, setRealGameToastVisible] = useState(false);
+  const realGameToastShown = useRef(false);
   const riverAllInTriggered = useRef(false);
   const isRiverAllIn =
     phase === 'river' &&
@@ -125,6 +150,16 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
     if (phase !== 'river') riverAllInTriggered.current = false;
   }, [phase]);
 
+  useEffect(() => {
+    if (gameNumber === 4 && !realGameToastShown.current) {
+      realGameToastShown.current = true;
+      setRealGameToastVisible(true);
+      const t = setTimeout(() => setRealGameToastVisible(false), 5000);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [gameNumber]);
+
   const showdownWinnerIndices = isShowdown && indices.length > 0 ? indices : [];
   useEffect(() => {
     if (showdownWinnerIndices.length > 0) {
@@ -136,27 +171,30 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   }, [isShowdown, winnerIndex]);
 
   useEffect(() => {
-    if (!isYourTurn) {
-      setPlayerTimeRemaining(null);
-      return;
-    }
-    setPlayerTimeRemaining(HUMAN_TURN_SECONDS);
-    const interval = setInterval(() => {
-      setPlayerTimeRemaining((prev) => (prev == null || prev <= 1 ? null : prev - 1));
-    }, 1000);
-    const timeout = setTimeout(() => onPlayerAction('fold'), HUMAN_TURN_SECONDS * 1000);
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, [isYourTurn, currentPlayerIndex, onPlayerAction]);
+    if (isShowdown) return undefined;
+    const id = setInterval(() => setClockTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [isShowdown]);
+
+  const turnSecondsRemaining = getTurnSecondsRemaining(gameState);
+  // clockTick keeps countdown updating each second
+  void clockTick;
+
+  useEffect(() => {
+    if (!isYourTurn || turnSecondsRemaining == null) return undefined;
+    const msLeft = (turnSecondsRemaining ?? 0) * 1000;
+    const timeout = setTimeout(() => {
+      onPlayerAction(getTimeoutAction(gameState, humanIndex));
+    }, Math.max(0, msLeft));
+    return () => clearTimeout(timeout);
+  }, [isYourTurn, gameState.turnStartedAt, gameState.currentPlayerIndex, humanIndex, onPlayerAction, turnSecondsRemaining]);
 
   const needsAutoAdvance = !isShowdown && currentTurnIsAllIn;
   useEffect(() => {
     if (!onBotTurn || (!isBotTurn && !needsAutoAdvance)) return;
     const delay = needsAutoAdvance ? 0 : 600;
     const t = setTimeout(onBotTurn, delay);
-    const safety = setTimeout(() => onBotTurn(), BOT_TURN_SAFETY_MS);
+    const safety = setTimeout(() => onBotTurn(), BOT_TURN_GRACE_MS);
     return () => {
       clearTimeout(t);
       clearTimeout(safety);
@@ -217,7 +255,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
 
   const renderSeat = (player, seatIndex, displayName, isDealer) => {
     if (!player) return null;
-    const { left, top, isTop, infoSide } = getSeatPosition(seatIndex);
+    const { left, top, isTop, infoSide, portraitDx, portraitDy, contentDx, contentDy } = getSeatPosition(seatIndex);
     const bestHand = getBestHand(player.holeCards, communityCards);
     const combo = moleculeTest && seatIndex === humanIndex && catalogSymbolsPresent(moleculeTestId, player.holeCards, communityCards)
       ? moleculeTestId
@@ -237,15 +275,32 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
     return (
       <div
         key={player.id}
-        className={`seat seat-${seatIndex} ${isTop ? 'seat-top' : 'seat-bottom'} seat-info-${infoSide} ${isWinnerFlash ? 'winner-flash' : ''} ${folded ? 'seat-folded' : ''} ${isCurrentTurn ? 'seat-current-turn' : ''}`}
+        className={`seat seat-${seatIndex} ${isYou ? 'seat-you' : ''} ${isTop ? 'seat-top' : 'seat-bottom'} seat-info-${infoSide} ${isWinnerFlash ? 'winner-flash' : ''} ${folded ? 'seat-folded' : ''} ${isCurrentTurn ? 'seat-current-turn' : ''}`}
         data-testid={`player-${player.id}`}
         style={{ left: `${left}%`, top: `${top}%` }}
       >
-        <div className="seat-content">
+        <div
+          className={`seat-dog-portrait ${isYou ? 'seat-dog-portrait-you' : ''}`}
+          data-testid={`dog-avatar-${seatIndex}`}
+          style={{
+            transform: `translate(calc(-50% + ${portraitDx}px), calc(-50% + ${portraitDy}px))`,
+          }}
+        >
+          <img
+            src={getDogAvatarSrc(seatIndex, humanIndex)}
+            alt={getDogAvatarAlt(seatIndex, humanIndex, displayName)}
+            className="seat-dog-portrait-img"
+          />
+        </div>
+        <div
+          className="seat-content"
+          style={{
+            transform: `translate(calc(-50% + ${contentDx}px), calc(-50% + ${contentDy}px))`,
+          }}
+        >
           <div className="seat-info">
-            <div className={`player-box ${combo && !folded ? 'player-flash' : ''}`} style={{ position: 'relative' }}>
+            <div className={`player-box ${combo && !folded ? 'player-flash' : ''} ${isYou ? 'player-box-you' : ''}`} style={{ position: 'relative' }}>
               {isDealer && <span className="dealer-badge">D</span>}
-              <div className="player-avatar">{displayName.slice(0, 1).toUpperCase()}</div>
               <div className="player-info">
                 <span className="player-name" title={displayName}>{displayName}</span>
                 <span className="player-chips">{player.chips}</span>
@@ -309,6 +364,232 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
           All-in — resolving showdown…
         </div>
       )}
+      {realGameToastVisible && (
+        <div className="real-game-toast poker-view-msg" data-testid="real-game-msg" role="status">
+          The real game starts — 1000 atomcoins redistributed!
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="house-rules-btn"
+        onClick={() => setHouseRulesOpen(true)}
+        data-testid="house-rules-open"
+        aria-expanded={houseRulesOpen}
+        aria-controls="house-rules-drawer"
+      >
+        House rules
+      </button>
+
+      <div
+        id="house-rules-drawer"
+        className={`house-rules-drawer ${houseRulesOpen ? 'house-rules-drawer-open' : ''}`}
+        data-testid="house-rules-drawer"
+        aria-hidden={!houseRulesOpen}
+      >
+        {houseRulesOpen && (
+          <button
+            type="button"
+            className="house-rules-backdrop"
+            onClick={() => setHouseRulesOpen(false)}
+            aria-label="Close house rules"
+            data-testid="house-rules-backdrop"
+          />
+        )}
+        <div className="house-rules-panel">
+          <div className="house-rules-header">
+            <h2 className="house-rules-title">House rules</h2>
+            <button
+              type="button"
+              className="house-rules-close"
+              onClick={() => setHouseRulesOpen(false)}
+              aria-label="Close"
+              data-testid="house-rules-close"
+            >
+              ×
+            </button>
+          </div>
+          <div className="house-rules-tabs" role="tablist">
+            {(['rules', 'molecules', 'community']).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={houseRulesTab === tab}
+                className={`house-rules-tab ${houseRulesTab === tab ? 'active' : ''}`}
+                onClick={() => setHouseRulesTab(tab)}
+                data-testid={`house-rules-tab-${tab}`}
+              >
+                {tab === 'rules' ? 'Rules' : tab === 'molecules' ? 'Molecules' : 'Community'}
+              </button>
+            ))}
+          </div>
+          <div className="house-rules-body">
+            <div className="house-rules-tab-panel" hidden={houseRulesTab !== 'rules'}>
+              <div className="rules-panel" data-testid="rules-panel">
+                <section className="rules-section">
+                  <h3 className="rules-section-title">The deck</h3>
+                  <p>One card per element (118 unique symbols).</p>
+                </section>
+                <section className="rules-section">
+                  <h3 className="rules-section-title">Molecule hands</h3>
+                  <p>
+                    A molecule hand means you have those element cards on the table — subscripts are chemistry shorthand only
+                    (H₂O = H + O, CO₂ = C + O; not O₂ or N₂, which need duplicate cards).
+                  </p>
+                </section>
+                <section className="rules-section">
+                  <h3 className="rules-section-title">Ranking</h3>
+                  <p>{moleculeRankingLabel()}. Tutorial hands 1–3 show NaCl, H₂O, then CHONP.</p>
+                </section>
+                <section className="rules-section">
+                  <h3 className="rules-section-title">All-in</h3>
+                  <p>
+                    If you or a bot goes all-in, that player cannot fold and stays in until showdown; others must call
+                    (or go all-in) to stay in or fold. When everyone still in is all-in, no further bets — remaining
+                    community cards are dealt, then showdown.
+                  </p>
+                </section>
+                {gameNumber >= 4 && (
+                  <section className="rules-section">
+                    <h3 className="rules-section-title">Bust</h3>
+                    <p>Once a player has 0 atomcoins after a hand, they lose and the game is over.</p>
+                  </section>
+                )}
+              </div>
+            </div>
+            <div className="house-rules-tab-panel" hidden={houseRulesTab !== 'molecules'}>
+              <div className="known-molecules-panel" data-testid="known-molecules-panel">
+                <p className="known-molecules-intro">
+                  <strong>Known molecules</strong>
+                  <span className="known-molecules-deck-hint"> (one card per element):</span>
+                </p>
+                <div className="known-molecules-plaque-grid">
+                  {Object.values(KNOWN_MOLECULES).map((mol) => (
+                    <a
+                      key={mol.id}
+                      href={mol.wikiUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="known-molecule-plaque known-molecule-link"
+                      data-testid={`known-molecule-${mol.id}`}
+                      title={knownMoleculeLinkTitle(mol)}
+                    >
+                      <span className="known-molecule-plaque-label">{mol.label}</span>
+                      <span className="known-molecule-plaque-hint">{mol.cardHint}</span>
+                      <span className="known-molecule-plaque-name">{mol.name}</span>
+                    </a>
+                  ))}
+                </div>
+                <a
+                  href={MOLECULES_WIKI_INDEX}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="known-molecule-index-link"
+                  data-testid="molecules-wiki-index"
+                >
+                  Lists of molecules (Wikipedia)
+                </a>
+              </div>
+            </div>
+            <div className="house-rules-tab-panel" hidden={houseRulesTab !== 'community'}>
+              {showCommunityHierarchy ? (
+                <div className="community-hierarchy" data-testid="community-hierarchy">
+                  <h3 className="community-hierarchy-title">Community hierarchy</h3>
+                  <p className="community-hierarchy-hint">
+                    Propose hands on GitHub; the community votes with reactions. The hierarchy evolves as science and play experience grow.
+                  </p>
+                  <p className="community-hierarchy-life-first" data-testid="life-first-reminder">
+                    Life-first: do not argue destruction makes a hand better — argue life, energy, or scientific value.
+                  </p>
+                  <p className="rules-github-hint">
+                    Want to change the hierarchy? Propose on GitHub — community votes with reactions.
+                  </p>
+                  {!isShowdown && !houseRulesOpen && (
+                    <p className="community-hierarchy-wait" data-testid="community-hierarchy-wait">
+                      Tap House rules to open this panel and submit between hands.
+                    </p>
+                  )}
+                  <input
+                    type="text"
+                    placeholder="Your name (optional)"
+                    value={hierarchyName}
+                    onChange={(e) => setHierarchyName(e.target.value)}
+                    className="player-hierarchy-input"
+                    data-testid="hierarchy-name-input"
+                  />
+                  <div className="community-hierarchy-actions">
+                    {hierarchyHandUrl ? (
+                      <a
+                        href={hierarchyHandUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-hierarchy"
+                        data-testid="submit-hand-hierarchy"
+                      >
+                        Submit hand to Hierarchy
+                      </a>
+                    ) : (
+                      <span className="community-hierarchy-err" data-testid="hierarchy-name-error">{hierarchyNameValid.error}</span>
+                    )}
+                    {hierarchyNewRuleUrl && (
+                      <a
+                        href={hierarchyNewRuleUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-secondary btn-hierarchy-secondary"
+                        data-testid="propose-new-rule"
+                      >
+                        Propose new rule
+                      </a>
+                    )}
+                    <a
+                      href={githubIssuesUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary btn-hierarchy-secondary"
+                      data-testid="view-github-proposals"
+                    >
+                      View proposals on GitHub
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <p className="community-hierarchy-unavailable">
+                  Community proposals unlock in Game 4 after the tutorial.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="poker-table-wrap">
+        <div className="poker-table">
+          <div className="table-center">
+            <div className="total-pot">
+              Total Pot {pot}
+              {pots.length > 1 && (
+                <span className="side-pots" data-testid="side-pots">
+                  {' '}
+                  ({pots.map((p, i) => `${i === 0 ? 'Main' : 'Side'} ${p.amount}`).join(' · ')})
+                </span>
+              )}
+            </div>
+            <div className="community-cards">
+              {communityCards.map((card, i) => (
+                <Card key={card.id || i} element={card} moleculeCombo={yourCombo} />
+              ))}
+            </div>
+          </div>
+          <div className="table-seats">
+            {players?.map((player, i) => {
+              const displayName = i === humanIndex ? 'You' : (playerNames?.[i] ?? (isMultiplayer ? `Player ${i}` : `Bot ${i}`));
+              return renderSeat(player, i, displayName, i === dealerIndex);
+            })}
+          </div>
+        </div>
+      </div>
       {isShowdown && winnerName && winnerReasonLabel && (
         <div className="showdown-winner-block" data-testid="showdown-winner-block">
           <div className={`winner-announce ${gameNumber === 3 && winnerReason === 'chonp' ? 'winner-announce-chonp' : ''}`} data-testid="winner-announce">
@@ -413,126 +694,6 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
           <strong>Tutorial Game 3 complete!</strong> CHONP — C + H + O + N + P — are the atoms of DNA. Best to fourth-best: {moleculeRankingLabel()}. Click <strong>Next Hand</strong> to start the real game with 1000 chips each.
         </div>
       )}
-      {gameNumber === 4 && (
-        <div className="real-game-msg poker-view-msg" data-testid="real-game-msg">
-          The real game starts — 1000 atomcoins redistributed!
-        </div>
-      )}
-      <div className="rules-panel" data-testid="rules-panel">
-        <strong>Rules so far:</strong> One card per element (118 unique symbols). A molecule hand means you have those element cards on the table — subscripts are chemistry shorthand only (H₂O = H + O, CO₂ = C + O; not O₂ or N₂, which need duplicate cards). Ranking: {moleculeRankingLabel()}. (Tutorial hands 1–3 show NaCl, H₂O, then CHONP.) <strong>All-in:</strong> If you or a bot goes all-in, that player cannot fold and stays in until showdown; others must call (or go all-in) to stay in or fold. When everyone still in is all-in, no further bets — remaining community cards are dealt, then showdown. {gameNumber >= 4 && (<><strong>Bust:</strong> Once a player has 0 atomcoins after a hand, they lose and the game is over.</>)}
-        {gameNumber >= 4 && (
-          <span className="rules-github-hint"> Want to change the hierarchy? Propose on GitHub — community votes with reactions.</span>
-        )}
-      </div>
-      <div className="known-molecules-panel" data-testid="known-molecules-panel">
-        <strong>Known molecules</strong>
-        <span className="known-molecules-deck-hint"> (one card per element):</span>
-        <ul className="known-molecules-list">
-          {Object.values(KNOWN_MOLECULES).map((mol) => (
-            <li key={mol.id}>
-              <a
-                href={mol.wikiUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="known-molecule-link"
-                data-testid={`known-molecule-${mol.id}`}
-                title={knownMoleculeLinkTitle(mol)}
-              >
-                {mol.label} ({mol.name}) — {mol.cardHint}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <a
-          href={MOLECULES_WIKI_INDEX}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="known-molecule-index-link"
-          data-testid="molecules-wiki-index"
-        >
-          Lists of molecules (Wikipedia)
-        </a>
-      </div>
-      {showCommunityHierarchy && (
-        <div className="community-hierarchy" data-testid="community-hierarchy">
-          <h3 className="community-hierarchy-title">Community hierarchy</h3>
-          <p className="community-hierarchy-hint">
-            Propose hands on GitHub; the community votes with reactions. The hierarchy evolves as science and play experience grow.
-          </p>
-          <p className="community-hierarchy-life-first" data-testid="life-first-reminder">
-            Life-first: do not argue destruction makes a hand better — argue life, energy, or scientific value.
-          </p>
-          <input
-            type="text"
-            placeholder="Your name (optional)"
-            value={hierarchyName}
-            onChange={(e) => setHierarchyName(e.target.value)}
-            className="player-hierarchy-input"
-            data-testid="hierarchy-name-input"
-          />
-          <div className="community-hierarchy-actions">
-            {hierarchyHandUrl ? (
-              <a
-                href={hierarchyHandUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-hierarchy"
-                data-testid="submit-hand-hierarchy"
-              >
-                Submit hand to Hierarchy
-              </a>
-            ) : (
-              <span className="community-hierarchy-err" data-testid="hierarchy-name-error">{hierarchyNameValid.error}</span>
-            )}
-            {hierarchyNewRuleUrl && (
-              <a
-                href={hierarchyNewRuleUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary btn-hierarchy-secondary"
-                data-testid="propose-new-rule"
-              >
-                Propose new rule
-              </a>
-            )}
-            <a
-              href={githubIssuesUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary btn-hierarchy-secondary"
-              data-testid="view-github-proposals"
-            >
-              View proposals on GitHub
-            </a>
-          </div>
-        </div>
-      )}
-      <div className="poker-table-wrap">
-        <div className="poker-table">
-          <div className="table-center">
-            <div className="total-pot">
-              Total Pot {pot}
-              {pots.length > 1 && (
-                <span className="side-pots" data-testid="side-pots">
-                  {' '}
-                  ({pots.map((p, i) => `${i === 0 ? 'Main' : 'Side'} ${p.amount}`).join(' · ')})
-                </span>
-              )}
-            </div>
-            <div className="community-cards">
-              {communityCards.map((card, i) => (
-                <Card key={card.id || i} element={card} moleculeCombo={yourCombo} />
-              ))}
-            </div>
-          </div>
-          <div className="table-seats">
-            {players?.map((player, i) => {
-              const displayName = i === humanIndex ? 'You' : (playerNames?.[i] ?? (isMultiplayer ? `Player ${i}` : `Bot ${i}`));
-              return renderSeat(player, i, displayName, i === dealerIndex);
-            })}
-          </div>
-        </div>
-      </div>
       <div className="your-hand-bar">
         <span className="your-hand-label">Your Hand:</span>
         <div className="your-hand-cards">
@@ -551,10 +712,25 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
             You have {winningMoleculeLabel} — you&apos;re sure to win this hand! Consider going all in.
           </div>
         )}
+        {lastAction?.timedOut && (
+          <span className="timeout-toast" data-testid="timeout-toast">
+            {(lastAction.playerIndex === humanIndex ? 'You' : (playerNames?.[lastAction.playerIndex] ?? (isMultiplayer ? `Player ${lastAction.playerIndex}` : `Bot ${lastAction.playerIndex}`)))}
+            {' '}
+            {lastAction.action === 'check' ? 'checked' : 'folded'}
+            {' '}
+            (time)
+          </span>
+        )}
         {currentTurnPlayer && (
           <div className="current-turn-tracker" data-testid="current-turn-tracker">
             <strong>Current turn:</strong> {currentTurnPlayer}
-            {currentTurnIsAllIn ? ' (all-in — no action)' : isYourTurn ? ' — check, bet, call or fold' : ' — checking…'}
+            {currentTurnIsAllIn
+              ? ' (all-in — no action)'
+              : isYourTurn
+                ? ` — check, bet, call or fold (${turnSecondsRemaining ?? TURN_TIMEOUT_SECONDS}s)`
+                : turnSecondsRemaining != null
+                  ? ` — ${turnSecondsRemaining}s or auto-${getTimeoutAction(gameState, currentPlayerIndex)}`
+                  : ' — checking…'}
           </div>
         )}
         <div className="action-bar">
@@ -565,9 +741,11 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
           )}
           {isYourTurn && (
             <>
-              {playerTimeRemaining != null && (
+              {turnSecondsRemaining != null && (
                 <span className="turn-countdown" data-testid="turn-countdown">
-                  {Math.floor(playerTimeRemaining / 60)}:{(playerTimeRemaining % 60).toString().padStart(2, '0')} or fold
+                  {Math.floor(turnSecondsRemaining / 60)}:{(turnSecondsRemaining % 60).toString().padStart(2, '0')}
+                  {' '}
+                  or {getTimeoutAction(gameState, humanIndex)}
                 </span>
               )}
               <span className="to-call">To call: {toCall}</span>
@@ -591,9 +769,17 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
               <button type="button" className="btn-fold" onClick={() => onPlayerAction('fold')}>Fold</button>
             </>
           )}
-          {!isYourTurn && !isShowdown && isBotTurn && !isMultiplayer && <span className="waiting-msg">Bot thinking…</span>}
+          {!isYourTurn && !isShowdown && isBotTurn && !isMultiplayer && (
+            <span className="waiting-msg" data-testid="bot-thinking-msg">
+              Bot thinking…
+              {turnSecondsRemaining != null ? ` (${turnSecondsRemaining}s)` : ''}
+            </span>
+          )}
           {!isYourTurn && !isShowdown && isMultiplayer && currentTurnPlayer && !isBotTurn && !isBotTurnAllIn && (
-            <span className="waiting-msg">Waiting for {currentTurnPlayer}…</span>
+            <span className="waiting-msg" data-testid="waiting-for-player-msg">
+              Waiting for {currentTurnPlayer}
+              {turnSecondsRemaining != null ? `… (${turnSecondsRemaining}s or auto-${getTimeoutAction(gameState, currentPlayerIndex)})` : '…'}
+            </span>
           )}
           {!isShowdown && youAllIn && (
             <span className="allin-msg" data-testid="allin-msg">All-in — you stay in until showdown. No action needed.</span>

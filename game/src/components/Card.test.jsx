@@ -16,11 +16,18 @@ describe('Card', () => {
     expect(screen.getByTestId('card-facedown')).toBeTruthy();
   });
 
-  it('adds card-light class when background color is light', () => {
-    const { container } = render(
-      <Card element={{ symbol: 'Sc', name: 'Scandium', number: 21, color: '#e6e6e6' }} />
-    );
-    expect(container.querySelector('.card.card-light')).toBeTruthy();
+  it('uses dark text on light element backgrounds (wiki links included)', () => {
+    render(<Card element={{ symbol: 'S', name: 'Sulfur', number: 16, color: '#ffff30' }} />);
+    const link = screen.getByTestId('card-S');
+    expect(link.className).toMatch(/card-light/);
+    expect(link.style.getPropertyValue('--card-text').trim()).toBe('#1a1208');
+  });
+
+  it('uses white text on dark element backgrounds', () => {
+    render(<Card element={{ symbol: 'Th', name: 'Thorium', number: 90, color: '#3050f8' }} />);
+    const link = screen.getByTestId('card-Th');
+    expect(link.className).not.toMatch(/card-light/);
+    expect(link.style.getPropertyValue('--card-text').trim()).toBe('#ffffff');
   });
 
   it('keeps default styling when background color is dark', () => {

@@ -22,9 +22,20 @@ describe('App molecule test button', () => {
   it('shows Test all 50 molecules on localhost', () => {
     render(<App />);
     expect(screen.getByTestId('start-molecule-test')).toBeTruthy();
+    expect(screen.getByTestId('local-test-banner').textContent).toMatch(/Local dev/);
   });
 
-  it('does not show test button on production hostname', () => {
+  it('shows dev mode hint on production hostname with ?test=1', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...origLocation, hostname: 'periodictablepoker.web.app', search: '?test=1' },
+    });
+    render(<App />);
+    expect(screen.getByTestId('start-molecule-test')).toBeTruthy();
+    expect(screen.getByTestId('local-test-banner').textContent).toMatch(/Test all 50 molecules/);
+  });
+
+  it('does not show test button on production without ?test=1', () => {
     Object.defineProperty(window, 'location', {
       writable: true,
       value: { ...origLocation, hostname: 'periodictablepoker.web.app', search: '' },

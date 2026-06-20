@@ -29,6 +29,7 @@ export function Card({ element, faceDown = false, moleculeCombo = null }) {
   const wikiUrl = elementWikiUrlFromElement(element);
   const bg = color || '#1f2937';
   const textDark = isLightColor(bg);
+  const cardText = textDark ? '#1a1208' : '#ffffff';
   const inKnownMolecule = moleculeCombo && (
     isSymbolInKnownMolecule(symbol, moleculeCombo)
     || isSymbolInCatalogMolecule(symbol, moleculeCombo)
@@ -54,7 +55,7 @@ export function Card({ element, faceDown = false, moleculeCombo = null }) {
         href={wikiUrl}
         className={cardClass}
         data-testid={`card-${symbol}`}
-        style={{ '--card-color': bg }}
+        style={{ '--card-color': bg, '--card-text': cardText }}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`${wikiName} — Read on Wikipedia`}
@@ -69,7 +70,7 @@ export function Card({ element, faceDown = false, moleculeCombo = null }) {
     <div
       className={cardClass}
       data-testid={`card-${symbol}`}
-      style={{ '--card-color': bg }}
+      style={{ '--card-color': bg, '--card-text': cardText }}
     >
       {content}
     </div>

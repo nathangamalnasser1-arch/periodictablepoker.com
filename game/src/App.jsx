@@ -1,17 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   dealGame,
   dealMoleculeTestGame,
   MOLECULE_CATALOG_COUNT,
   playerAction,
   botAction,
-  advanceBettingRound,
-  autoAdvanceIdlePlayers,
-  runOutBoardWhenLocked,
-  isBettingRoundComplete,
   isGameOver,
 } from './game/gameLogic.js';
+import { resolveGameProgress, processTurnWatchdog, ensureTurnStamp, WATCHDOG_INTERVAL_MS } from './game/turnTimeout.js';
 import { GameBoard } from './components/GameBoard.jsx';
+import { HomePage } from './components/HomePage.jsx';
 import { Lobby } from './multiplayer/Lobby.jsx';
 import { useMultiplayer } from './multiplayer/useMultiplayer.js';
 import { isLocalTestWindow } from './utils/localTest.js';
@@ -27,7 +25,7 @@ export default function App() {
   const [appMode, setAppMode] = useState('home'); // home | solo | online
 
   const applyRemoteState = useCallback((state) => {
-    setGameState(state);
+    setGameState(ensureTurnStamp(state));
   }, []);
 
   const mp = useMultiplayer(applyRemoteState);
@@ -52,12 +50,8 @@ export default function App() {
     setGameState(prev => {
       const actorIndex = mp.isMultiplayer ? mp.myPlayerIndex : HUMAN_INDEX;
       let s = playerAction(prev, actorIndex, action, amount);
-      if (s === prev) return prev; // rejected action (not our turn)
-      if (isBettingRoundComplete(s)) {
-        const runOut = runOutBoardWhenLocked(s, s.gameNumber);
-        s = runOut !== s ? runOut : advanceBettingRound(s, s.gameNumber);
-      }
-      s = autoAdvanceIdlePlayers(s, s.gameNumber);
+      if (s === prev) return prev;
+      s = resolveGameProgress(s, s.gameNumber);
       if (mp.isMultiplayer) mp.writeState(s);
       return s;
     });
@@ -65,7 +59,7 @@ export default function App() {
 
   const handleAutoAdvance = useCallback(() => {
     setGameState(prev => {
-      const s = autoAdvanceIdlePlayers(prev, prev.gameNumber);
+      const s = resolveGameProgress(prev, prev.gameNumber);
       if (s === prev) return prev;
       if (mp.isMultiplayer) mp.writeState(s);
       return s;
@@ -74,16 +68,14 @@ export default function App() {
 
   const handleBotTurn = useCallback(() => {
     setGameState(prev => {
-      let s = autoAdvanceIdlePlayers(prev, prev.gameNumber);
+      let s = resolveGameProgress(prev, prev.gameNumber);
       const current = s.players[s.currentPlayerIndex];
-      if (current && !current.folded && current.chips > 0) {
+      if (current && !current.folded && current.chips > 0 && s.phase !== 'showdown') {
         const bot = botAction(s, s.currentPlayerIndex);
         s = playerAction(s, s.currentPlayerIndex, bot.action, bot.amount);
-        if (isBettingRoundComplete(s)) {
-          const runOut = runOutBoardWhenLocked(s, s.gameNumber);
-          s = runOut !== s ? runOut : advanceBettingRound(s, s.gameNumber);
+        if (s !== prev) {
+          s = resolveGameProgress(s, s.gameNumber);
         }
-        s = autoAdvanceIdlePlayers(s, s.gameNumber);
       }
       return s;
     });
@@ -122,6 +114,24 @@ export default function App() {
 
   const isLocalTest = isLocalTestWindow();
 
+  // Multiplayer host: fold/check absent players when turn timer expires
+  const watchdogKey = gameState
+    ? `${gameState.phase}-${gameState.currentPlayerIndex}-${gameState.turnStartedAt}`
+    : null;
+  useEffect(() => {
+    if (!mp.isMultiplayer || !mp.isHost || !gameState || gameState.phase === 'showdown') return undefined;
+    const id = setInterval(() => {
+      setGameState((prev) => {
+        if (!prev || prev.phase === 'showdown') return prev;
+        const { state: next, timedOut } = processTurnWatchdog(prev, prev.gameNumber);
+        if (next === prev) return prev;
+        mp.writeState(next);
+        return next;
+      });
+    }, WATCHDOG_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [mp.isMultiplayer, mp.isHost, mp.writeState, watchdogKey]);
+
   const humanIndex = mp.isMultiplayer ? mp.myPlayerIndex : HUMAN_INDEX;
   const playerNames = mp.isMultiplayer
     ? (mp.lobbyData?.playerNames ?? null)
@@ -130,52 +140,24 @@ export default function App() {
   // ── HOME ──────────────────────────────────────────────────────────────────
   if (appMode === 'home') {
     return (
-      <div className="app">
-        {isLocalTest && (
+      <HomePage
+        isLocalTest={isLocalTest}
+        localTestBanner={isLocalTest && (
           <div className="local-test-banner" data-testid="local-test-banner">
-            Local test — not deployed. Run <code>npm run deploy</code> from <code>game/</code> when ready.
+            {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+              ? (
+                <>Local dev — run <code>npm run deploy</code> from <code>game/</code> to update the live site.</>
+              )
+              : (
+                <>Dev mode (<code>?test=1</code>) — use <strong>Test all 50 molecules</strong> below.</>
+              )}
           </div>
         )}
-        <header>
-          <h1>Periodic Table Poker</h1>
-          <p className="tagline">Texas Hold'em with 118 element cards — win all the chips</p>
-        </header>
-        <main>
-          <div className="lobby">
-            <button className="btn-primary" onClick={startSoloGame}>
-              Play Solo
-            </button>
-            <button
-              className="btn-secondary"
-              onClick={() => { setAppMode('online'); mp.openLobby(); }}
-            >
-              Play Online
-            </button>
-            <a href="/scoreboard.html" className="btn-secondary btn-view-scoreboard-home" data-testid="view-scoreboard-home">
-              View Scoreboard
-            </a>
-            <a
-              href={`https://github.com/${GITHUB_REPO}/issues`}
-              className="btn-secondary btn-community-github"
-              data-testid="community-rules-github-home"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Community rules (GitHub)
-            </a>
-            {isLocalTest && (
-              <button
-                type="button"
-                className="btn-secondary btn-molecule-test"
-                onClick={startMoleculeTest}
-                data-testid="start-molecule-test"
-              >
-                Test all 50 molecules
-              </button>
-            )}
-          </div>
-        </main>
-      </div>
+        onPlaySolo={startSoloGame}
+        onPlayOnline={() => { setAppMode('online'); mp.openLobby(); }}
+        onMoleculeTest={startMoleculeTest}
+        githubRepo={GITHUB_REPO}
+      />
     );
   }
 

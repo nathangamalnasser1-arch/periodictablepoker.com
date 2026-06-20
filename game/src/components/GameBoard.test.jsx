@@ -36,6 +36,24 @@ describe('GameBoard', () => {
     expect(screen.getByText(/Best hand: 400 u/)).toBeTruthy();
   });
 
+  it('shows dog portrait busts outside the table at each seat', () => {
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false },
+        { id: 'player-1', holeCards: [{ symbol: 'O' }], chips: 1000, folded: false },
+      ],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+    };
+    render(<GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />);
+    const youPortrait = screen.getByTestId('dog-avatar-0').querySelector('img');
+    const botPortrait = screen.getByTestId('dog-avatar-1').querySelector('img');
+    expect(youPortrait.getAttribute('src')).toContain('/avatars/dog-pipe.png');
+    expect(botPortrait.getAttribute('src')).toContain('/avatars/dog-pince-nez.png');
+    expect(screen.getByTestId('dog-avatar-0').className).toMatch(/seat-dog-portrait-you/);
+  });
+
   it('shows Next Hand button when phase is showdown', () => {
     const onNextHand = vi.fn();
     const gameState = {
@@ -83,6 +101,23 @@ describe('GameBoard', () => {
     expect(screen.getByTestId('known-molecule-co2').getAttribute('href')).toContain('Carbon_dioxide');
     expect(screen.getByTestId('known-molecule-co2').textContent).toContain('C + O');
     expect(screen.getByTestId('molecules-wiki-index').getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Lists_of_molecules');
+  });
+
+  it('opens house rules drawer with tab panels', () => {
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false }],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+    };
+    render(<GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />);
+    expect(screen.getByTestId('house-rules-drawer').className).not.toMatch(/house-rules-drawer-open/);
+    fireEvent.click(screen.getByTestId('house-rules-open'));
+    expect(screen.getByTestId('house-rules-drawer').className).toMatch(/house-rules-drawer-open/);
+    fireEvent.click(screen.getByTestId('house-rules-tab-molecules'));
+    expect(screen.getByTestId('known-molecule-nacl')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('house-rules-close'));
+    expect(screen.getByTestId('house-rules-drawer').className).not.toMatch(/house-rules-drawer-open/);
   });
 
   it('rules panel explains one card per element and subscript shorthand', () => {
@@ -548,5 +583,55 @@ describe('GameBoard', () => {
       <GameBoard gameState={gameState} gameNumber={2} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />
     );
     expect(screen.getByTestId('molecule-test-result').textContent).toMatch(/^PASS/);
+  });
+
+  it('shows turn countdown for waiting multiplayer player', () => {
+    const now = Date.now();
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false },
+        { id: 'player-1', holeCards: [{ symbol: 'O' }], chips: 1000, folded: false },
+      ],
+      communityCards: [],
+      phase: 'preflop',
+      pot: 15,
+      currentBet: 20,
+      roundBets: [20, 10],
+      currentPlayerIndex: 1,
+      dealerIndex: 0,
+      turnStartedAt: now,
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+        humanIndex={0}
+        isMultiplayer
+        playerNames={['You', 'Alice']}
+      />
+    );
+    expect(screen.getByTestId('waiting-for-player-msg').textContent).toMatch(/Alice/);
+    expect(screen.getByTestId('waiting-for-player-msg').textContent).toMatch(/auto-fold/);
+  });
+
+  it('shows timeout toast when last action was timed out', () => {
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: true }],
+      communityCards: [],
+      phase: 'preflop',
+      currentPlayerIndex: 0,
+      dealerIndex: 0,
+      lastAction: { playerIndex: 1, action: 'fold', timedOut: true },
+      turnStartedAt: Date.now(),
+    };
+    render(
+      <GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />
+    );
+    expect(screen.getByTestId('timeout-toast').textContent).toContain('folded');
+    expect(screen.getByTestId('timeout-toast').textContent).toContain('(time)');
   });
 });

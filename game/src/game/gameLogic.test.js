@@ -9,6 +9,7 @@ import { CATALOG_MOLECULE_IDS } from '../data/moleculeCatalog.js';
 describe('gameLogic', () => {
   it('dealGame creates 2 players with 2 hole cards each (blinds posted)', () => {
     const game = dealGame(2, 1);
+    expect(game.turnStartedAt).toBeTypeOf('number');
     expect(game.players).toHaveLength(2);
     game.players.forEach((p) => {
       expect(p.holeCards).toHaveLength(2);
