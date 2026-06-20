@@ -6,6 +6,53 @@
   padding: 2rem;
 }
 
+.local-test-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: #f59e0b;
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.local-test-banner code {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.lobby-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #e5e7eb;
+}
+
+.lobby-option input { cursor: pointer; }
+
+.tutorial-instruction {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(34, 197, 94, 0.15);
+  border: 2px solid #22c55e;
+  border-radius: 10px;
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  color: #d1fae5;
+  line-height: 1.5;
+  text-align: center;
+  max-width: min(90vw, 520px);
+}
+
+.tutorial-instruction strong { color: #86efac; }
+
 /* ========== Poker table view (WSOP-style) ========== */
 .poker-view {
   min-height: 100vh;
@@ -100,19 +147,37 @@
 
 .seat-content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.2rem;
-  max-width: 72px;
+  gap: 0.35rem;
+  max-width: none;
   min-width: 0;
 }
 
-.seat-bottom .seat-content {
+.seat-info-left .seat-content {
+  flex-direction: row;
+}
+.seat-info-left .seat-info { order: 1; }
+.seat-info-left .seat-cards { order: 2; }
+
+.seat-info-right .seat-content {
+  flex-direction: row;
+}
+.seat-info-right .seat-info { order: 2; }
+.seat-info-right .seat-cards { order: 1; }
+
+.seat-info {
+  display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  position: relative;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
-.seat-top .seat-content {
-  flex-direction: column-reverse;
+.seat-cards {
+  flex-shrink: 0;
 }
 
 .seat-you {
@@ -238,6 +303,17 @@
   height: clamp(60px, 11vw, 88px);
 }
 
+.current-turn-tracker {
+  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(34, 211, 238, 0.15);
+  border: 1px solid #22d3ee;
+  border-radius: 8px;
+  color: #22d3ee;
+  font-size: 0.95rem;
+}
+.current-turn-tracker strong { color: #67e8f9; }
+
 .action-bar {
   display: flex;
   flex-wrap: wrap;
@@ -282,13 +358,166 @@
   background: #b45309;
 }
 
-.chonp-yell-msg.poker-view-msg {
+.seat-folded .seat-content { opacity: 0.65; }
+.player-folded-label {
+  font-size: 0.6rem;
+  color: #9ca3af;
+  font-weight: 600;
+}
+.player-allin-label {
+  font-size: 0.6rem;
+  color: #fcd34d;
+  font-weight: 700;
+}
+.seat-current-turn .seat-content {
+  box-shadow: 0 0 0 2px #22d3ee;
+  border-radius: 8px;
+}
+.player-turn-label {
+  font-size: 0.7rem;
+  color: #22d3ee;
+  font-weight: 700;
+  margin-top: 0.2rem;
+}
+
+.btn-fold {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border: 1px solid #991b1b;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-fold:hover { background: #991b1b; }
+
+.turn-countdown { color: #f59e0b; font-weight: 700; font-size: 0.95rem; margin-right: 0.5rem; }
+.allin-msg { color: #86efac; font-size: 0.9rem; font-weight: 600; }
+.action-bar .to-call { color: #fcd34d; font-size: 0.9rem; margin-right: 0.5rem; }
+.last-action-msg { color: #9ca3af; font-size: 0.8rem; margin-right: 0.5rem; }
+.waiting-msg { color: #9ca3af; font-style: italic; }
+
+.sure-to-win-msg {
+  padding: 0.4rem 0.75rem;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid #22c55e;
+  border-radius: 8px;
+  color: #86efac;
+  font-size: clamp(0.8rem, 2vw, 0.95rem);
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.btn-allin {
+  background: #166534;
+  color: #86efac;
+  border: 1px solid #22c55e;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-allin:hover { background: #15803d; }
+.player-scoreboard { margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+
+.chonp-yell-msg.poker-view-msg,
+.real-game-msg.poker-view-msg {
   position: absolute;
   top: 0.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   margin: 0;
+}
+
+.real-game-msg.poker-view-msg {
+  color: #fcd34d;
+  font-weight: 700;
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+}
+
+.resolving-showdown-msg {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  color: #fcd34d;
+  font-weight: 600;
+  text-align: center;
+}
+.showdown-winner-block {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.showdown-next-hint {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+.showdown-cta {
+  display: flex;
+  justify-content: center;
+}
+.btn-showdown-next {
+  font-size: 1.1rem;
+  padding: 0.75rem 1.75rem;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(230, 138, 0, 0.5);
+}
+.winner-announce {
+  margin-bottom: 0;
+  padding: 0.5rem 1rem;
+  background: rgba(34, 211, 238, 0.2);
+  border: 2px solid #22d3ee;
+  border-radius: 10px;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  font-weight: 700;
+  color: #22d3ee;
+  text-align: center;
+  animation: winner-announce-flash 0.8s ease-out 2;
+}
+
+.winner-announce-chonp {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+  color: #fcd34d;
+  animation: winner-announce-flash 0.6s ease-out 4;
+}
+
+@keyframes winner-announce-flash {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.4); }
+  50% { opacity: 0.9; box-shadow: 0 0 20px 4px rgba(34, 211, 238, 0.6); }
+}
+
+.rules-panel {
+  max-width: min(90vw, 720px);
+  width: 100%;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+  color: #e5e7eb;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.rules-panel strong { color: #fcd34d; }
+
+.seat.winner-flash .seat-content {
+  animation: winner-flash 0.6s ease-out 5;
+}
+
+@keyframes winner-flash {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 14px #fcd34d) drop-shadow(0 0 24px #f59e0b); }
 }
 
 .poker-view .player-best-hand,
@@ -398,20 +627,22 @@ header h1 {
   50% { box-shadow: 0 0 25px 6px rgba(230, 138, 0, 0.9); }
   75% { box-shadow: 0 0 20px 4px rgba(34, 211, 238, 0.8); }
 }
-.player-combo-badge {
-  position: absolute;
-  top: -0.5rem;
-  right: 0.5rem;
+.seat-info .player-combo-badge {
+  position: relative;
+  top: 0;
+  right: 0;
   background: linear-gradient(135deg, #22d3ee, #f59e0b);
   color: #121212;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   border-radius: 0.25rem;
+  align-self: center;
 }
 
 .player-cards { display: flex; gap: 0.5rem; }
-.player-best-hand { margin-top: 0.5rem; font-size: 0.875rem; color: #22d3ee; }
+.player-best-hand { margin-top: 0.15rem; font-size: 0.75rem; color: #22d3ee; }
+.seat-info .player-best-hand { margin-top: 0.1rem; font-size: 0.65rem; }
 .player-hierarchy { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .player-hierarchy-input { padding: 0.5rem; border-radius: 0.25rem; border: 1px solid #374151; background: #111827; color: #d1d5db; font-size: 0.875rem; }
 .player-hierarchy-input::placeholder { color: #6b7280; }
@@ -470,4 +701,127 @@ header h1 {
   .game-board {
     padding-right: 7rem;
   }
+}
+
+/* Online lobby */
+.lobby-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #1e293b;
+  border-radius: 8px;
+}
+
+.lobby-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.lobby-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.lobby-section-header h3 {
+  margin: 0;
+}
+
+.lobby-hint {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.lobby-empty {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin: 0.5rem 0;
+}
+
+.lobby-input {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+.lobby-err {
+  color: #f87171;
+  margin: 0.75rem 0;
+}
+
+.waiting-games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.waiting-game-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #334155;
+}
+
+.waiting-game-row:last-child {
+  border-bottom: none;
+}
+
+.waiting-game-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.waiting-game-name {
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.waiting-game-meta {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.players-list {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+}
+
+.players-list li {
+  padding: 0.35rem 0;
+}
+
+.slot-filled {
+  color: #e5e7eb;
+}
+
+.slot-empty {
+  color: #64748b;
+}
+
+.lobby-keyword {
+  font-size: 1.05rem;
+  margin: 0.75rem 0;
+}
+
+.player-count {
+  margin: 0.5rem 0 1rem;
+  color: #94a3b8;
+}
+
+.btn-refresh-games {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
 }
