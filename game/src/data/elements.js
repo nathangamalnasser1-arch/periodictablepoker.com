@@ -123,6 +123,13 @@ export const ELEMENTS = [
   { symbol: 'Og', name: 'Oganesson', number: 118, color: '#eb0026' },
 ];
 
+/** English Wikipedia URL for an element (by IUPAC name). */
+export function elementWikiUrl(name) {
+  if (!name?.trim()) return 'https://en.wikipedia.org/wiki/Periodic_table';
+  const title = name.trim().replace(/\s+/g, '_');
+  return `https://en.wikipedia.org/wiki/${encodeURIComponent(title).replace(/%2F/g, '/')}`;
+}
+
 /** Atomic mass (u) for each element by number - used for hand weight */
 const ATOMIC_MASSES = [1.008, 4.003, 6.94, 9.012, 10.81, 12.01, 14.01, 16, 19, 20.18, 22.99, 24.31, 26.98, 28.09, 30.97, 32.07, 35.45, 39.95, 39.1, 40.08, 44.96, 47.87, 50.94, 52, 54.94, 55.85, 58.93, 58.69, 63.55, 65.38, 69.72, 72.64, 74.92, 78.97, 79.9, 83.8, 85.47, 87.62, 88.91, 91.22, 92.91, 95.95, 98, 101.1, 102.9, 106.4, 107.9, 112.4, 114.8, 118.7, 121.8, 127.6, 126.9, 131.3, 132.9, 137.3, 138.9, 140.1, 140.9, 144.2, 145, 150.4, 152, 157.3, 158.9, 162.5, 164.9, 167.3, 168.9, 173, 175, 178.5, 180.9, 183.8, 186.2, 190.2, 192.2, 195.1, 197, 200.6, 204.4, 207.2, 209, 209, 210, 222, 223, 226, 227, 232, 231, 238, 237, 244, 243, 247, 247, 251, 252, 257, 258, 259, 266, 267, 268, 269, 270, 277, 278, 281, 282, 285, 286, 289, 290, 293, 294, 294];
 
@@ -132,6 +139,7 @@ export function createDeck() {
     ...el,
     id: `card-${i}`,
     mass: ATOMIC_MASSES[i] ?? el.number * 2.5,
+    wikiUrl: elementWikiUrl(el.name),
   }));
 }
 

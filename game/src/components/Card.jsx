@@ -1,4 +1,5 @@
 import React from 'react';
+import { elementWikiUrl } from '../data/elements.js';
 
 /** Returns true if hex color is light (use black text) */
 function isLightColor(hex) {
@@ -21,18 +22,31 @@ export function Card({ element, faceDown = false }) {
     );
   }
 
-  const { symbol, name, number, color } = element;
+  const { symbol, name, number, color, wikiUrl } = element;
   const bg = color || '#1f2937';
   const textDark = isLightColor(bg);
+  const href = wikiUrl ?? elementWikiUrl(name);
+  const wikiTitle = name ? `${name} on Wikipedia` : 'Wikipedia';
+
   return (
     <div
       className={`card ${textDark ? 'card-light' : ''}`}
       data-testid={`card-${symbol}`}
       style={{ '--card-color': bg }}
     >
-      <div className="card-symbol">{symbol}</div>
-      <div className="card-number">{number}</div>
-      <div className="card-name">{name}</div>
+      <a
+        href={href}
+        className="card-wiki-link"
+        target="_blank"
+        rel="noopener noreferrer"
+        title={wikiTitle}
+        aria-label={wikiTitle}
+        data-testid={`card-wiki-${symbol}`}
+      >
+        <div className="card-symbol">{symbol}</div>
+        <div className="card-number">{number}</div>
+        {name && <div className="card-name">{name}</div>}
+      </a>
     </div>
   );
 }

@@ -29,4 +29,19 @@ describe('Card', () => {
     );
     expect(container.querySelector('.card.card-light')).toBeFalsy();
   });
+
+  it('links element to English Wikipedia', () => {
+    render(
+      <Card element={{ symbol: 'Fe', name: 'Iron', number: 26, wikiUrl: 'https://en.wikipedia.org/wiki/Iron' }} />
+    );
+    const link = screen.getByTestId('card-wiki-Fe');
+    expect(link.getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Iron');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('title')).toContain('Iron');
+  });
+
+  it('does not show wiki link when face down', () => {
+    render(<Card element={{ symbol: 'H', name: 'Hydrogen', wikiUrl: 'https://en.wikipedia.org/wiki/Hydrogen' }} faceDown />);
+    expect(screen.queryByTestId('card-wiki-H')).toBeFalsy();
+  });
 });
