@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { dealGame, dealFlop, dealTurn, dealRiver, advanceBettingRound, advanceIfCurrentPlayerInvalid, autoAdvanceIdlePlayers, runOutBoardWhenLocked, isRunOutLocked, isGameOver, getSessionWinnerIndex, playerAction, isBettingRoundComplete, buildSidePots, getMinOpenBet, getMinRaiseTo, getBestHandWeight, getBestHand, getMoleculeCombo, getWinner, botAction, PHASES, BB, STARTING_CHIPS } from './gameLogic.js';
+import {
+  dealGame, dealMoleculeTestGame, runMoleculeTestHandToShowdown,
+  dealFlop, dealTurn, dealRiver, advanceBettingRound, advanceIfCurrentPlayerInvalid, autoAdvanceIdlePlayers, runOutBoardWhenLocked, isRunOutLocked, isGameOver, getSessionWinnerIndex, playerAction, isBettingRoundComplete, buildSidePots, getMinOpenBet, getMinRaiseTo, getBestHandWeight, getBestHand, getMoleculeCombo, getWinner, botAction, PHASES, BB, STARTING_CHIPS,
+} from './gameLogic.js';
+import { catalogSymbolsPresent } from '../data/moleculeCatalog.js';
+import { CATALOG_MOLECULE_IDS } from '../data/moleculeCatalog.js';
 
 describe('gameLogic', () => {
   it('dealGame creates 2 players with 2 hole cards each (blinds posted)', () => {
@@ -719,6 +724,39 @@ describe('gameLogic', () => {
         players: [{ chips: 0, folded: false }, { chips: 1000, folded: false }],
       };
       expect(isGameOver(s)).toBe(false);
+    });
+  });
+
+  describe('molecule test session', () => {
+    it('dealMoleculeTestGame hand 1 is CHONP for player 0', () => {
+      const g = dealMoleculeTestGame({ catalogIndex: 1, numPlayers: 5 });
+      expect(g.moleculeTest).toBe(true);
+      expect(g.moleculeTestIndex).toBe(1);
+      expect(g.moleculeTestId).toBe('chonp');
+      expect(g.tutorial).toBe(true);
+      const afterFlop = dealFlop(g);
+      expect(catalogSymbolsPresent('chonp', afterFlop.players[0].holeCards, afterFlop.communityCards)).toBe(true);
+    });
+
+    it('dealMoleculeTestGame hand 2 is H₂O for player 0', () => {
+      const g = dealMoleculeTestGame({ catalogIndex: 2, numPlayers: 5 });
+      expect(g.moleculeTestId).toBe('h2o');
+      const afterFlop = dealFlop(g);
+      expect(catalogSymbolsPresent('h2o', afterFlop.players[0].holeCards, afterFlop.communityCards)).toBe(true);
+    });
+
+    it.each(CATALOG_MOLECULE_IDS)('catalog molecule %s passes stacked-deck check after flop', (id) => {
+      const index = CATALOG_MOLECULE_IDS.indexOf(id) + 1;
+      const g = dealMoleculeTestGame({ catalogIndex: index, numPlayers: 5 });
+      const afterFlop = dealFlop(g);
+      expect(catalogSymbolsPresent(id, afterFlop.players[0].holeCards, afterFlop.communityCards)).toBe(true);
+    });
+
+    it('runMoleculeTestHandToShowdown reaches showdown with target molecule present', () => {
+      const g = dealMoleculeTestGame({ catalogIndex: 12, numPlayers: 5 });
+      const end = runMoleculeTestHandToShowdown(g, 0);
+      expect(end.phase).toBe(PHASES.SHOWDOWN);
+      expect(catalogSymbolsPresent('sio2', end.players[0].holeCards, end.communityCards)).toBe(true);
     });
   });
 });

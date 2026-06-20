@@ -1,5 +1,7 @@
 import { createDeck, shuffle } from '../data/elements.js';
 import { matchMoleculeCombo, getKnownMolecule, MASS_TIER } from '../data/knownMolecules.js';
+import { getCatalogMoleculeByIndex, MOLECULE_CATALOG_COUNT } from '../data/moleculeCatalog.js';
+import { buildMoleculeTestDeck } from './moleculeTestDeck.js';
 
 /** Texas Hold'em phases */
 export const PHASES = {
@@ -184,6 +186,111 @@ export function dealGame(numPlayers = 10, gameNumber = 0, winnerOverride = undef
   };
 }
 
+/**
+ * Deal a molecule-test hand: stacked deck guarantees player 0 has catalog molecule after flop.
+ * @param {number} catalogIndex - 1..50
+ */
+export function dealMoleculeTestGame({ catalogIndex, numPlayers = 5, winnerIndex = 0 }) {
+  const mol = getCatalogMoleculeByIndex(catalogIndex);
+  if (!mol) throw new Error(`Invalid molecule test index: ${catalogIndex}`);
+
+  const deck = buildMoleculeTestDeck({
+    moleculeId: mol.id,
+    numPlayers,
+    winnerIndex,
+  });
+  const players = [];
+  let idx = 0;
+
+  for (let i = 0; i < numPlayers; i++) {
+    players.push({
+      id: `player-${i}`,
+      holeCards: [deck[idx++], deck[idx++]],
+      chips: STARTING_CHIPS,
+      bet: 0,
+      folded: false,
+    });
+  }
+
+  const communityCards = [];
+  const dealerIndex = (catalogIndex - 1 + numPlayers) % numPlayers;
+  const { sbIndex, bbIndex, firstToAct } = seatLayout(numPlayers, dealerIndex);
+  const roundBets = new Array(numPlayers).fill(0);
+  const totalBetThisHand = new Array(numPlayers).fill(0);
+
+  players[sbIndex].chips -= SB;
+  players[bbIndex].chips -= BB;
+  roundBets[sbIndex] = SB;
+  roundBets[bbIndex] = BB;
+  totalBetThisHand[sbIndex] = SB;
+  totalBetThisHand[bbIndex] = BB;
+
+  const pot = SB + BB;
+  const currentBet = BB;
+  const hasActedThisRound = new Array(numPlayers).fill(false);
+  const botStyles = Array.from({ length: numPlayers }, (_, i) =>
+    BOT_STYLES[i % BOT_STYLES.length],
+  );
+  const pots = buildSidePots(totalBetThisHand, players.map((p) => p.folded));
+
+  return {
+    deck,
+    players,
+    communityCards,
+    phase: PHASES.PREFLOP,
+    pot,
+    pots,
+    deckIndex: idx,
+    gameNumber: catalogIndex,
+    dealerIndex,
+    roundBets,
+    totalBetThisHand,
+    currentBet,
+    lastRaiseSize: BB,
+    currentPlayerIndex: firstToAct,
+    bettingRound: PHASES.PREFLOP,
+    hasActedThisRound,
+    lastAction: null,
+    tutorial: true,
+    moleculeTest: true,
+    moleculeTestIndex: catalogIndex,
+    moleculeTestId: mol.id,
+    moleculeTestComplete: false,
+    gameStartTime: Date.now(),
+    sessionBestHand: 0,
+    sessionBiggestPot: 0,
+    botStyles,
+  };
+}
+
+/** Fast-forward a molecule-test hand to showdown (unit tests). Bots fold; human checks/calls. */
+export function runMoleculeTestHandToShowdown(state, humanIndex = 0) {
+  let s = { ...state, players: state.players.map((p) => ({ ...p })) };
+  let guard = 0;
+  while (s.phase !== PHASES.SHOWDOWN && guard < 200) {
+    guard += 1;
+    const idx = s.currentPlayerIndex;
+    const p = s.players[idx];
+    if (!p || p.folded) {
+      s = advanceIfCurrentPlayerInvalid(s, s.gameNumber) ?? s;
+      continue;
+    }
+    if (idx === humanIndex) {
+      const toCall = s.currentBet - (s.roundBets[idx] || 0);
+      s = playerAction(s, idx, toCall > 0 ? 'call' : 'check');
+    } else {
+      s = playerAction(s, idx, 'fold');
+    }
+    if (isBettingRoundComplete(s)) {
+      s = advanceBettingRound(s, s.gameNumber);
+    }
+    s = autoAdvanceIdlePlayers(s, s.gameNumber);
+  }
+  return s;
+}
+
+export { MOLECULE_CATALOG_COUNT };
+
 /** Build main + side pots from per-player total contributions. */
 export function buildSidePots(totalBetThisHand, folded) {
   const n = totalBetThisHand.length;
@@ -229,10 +336,16 @@ function addToPot(next, playerIndex, chips) {
   next.pots = buildSidePots(next.totalBetThisHand, next.players.map((p) => p.folded));
 }
 
+/** Burn one card before community cards on real games (game 4+), not intro or molecule tests. */
+function communityBurn(gameState) {
+  if (gameState?.moleculeTest) return 0;
+  return (gameState?.gameNumber ?? 0) >= 4 ? 1 : 0;
+}
+
 /** Reveal flop (3 cards) after burn on real games (game 4+) */
 export function dealFlop(gameState) {
-  const { deck, deckIndex, gameNumber } = gameState;
-  const burn = gameNumber >= 4 ? 1 : 0;
+  const { deck, deckIndex } = gameState;
+  const burn = communityBurn(gameState);
   const start = deckIndex + burn;
   const newCommunity = [deck[start], deck[start + 1], deck[start + 2]];
   return {
@@ -245,8 +358,8 @@ export function dealFlop(gameState) {
 
 /** Reveal turn (1 card) after burn on real games */
 export function dealTurn(gameState) {
-  const { deck, deckIndex, gameNumber } = gameState;
-  const burn = gameNumber >= 4 ? 1 : 0;
+  const { deck, deckIndex } = gameState;
+  const burn = communityBurn(gameState);
   const start = deckIndex + burn;
   return {
     ...gameState,
@@ -258,8 +371,8 @@ export function dealTurn(gameState) {
 
 /** Reveal river (1 card) after burn on real games */
 export function dealRiver(gameState) {
-  const { deck, deckIndex, gameNumber } = gameState;
-  const burn = gameNumber >= 4 ? 1 : 0;
+  const { deck, deckIndex } = gameState;
+  const burn = communityBurn(gameState);
   const start = deckIndex + burn;
   return {
     ...gameState,

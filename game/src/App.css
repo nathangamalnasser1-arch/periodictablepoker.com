@@ -710,7 +710,38 @@ a.card.card-known-molecule:hover {
   line-height: 1.5;
   color: #d1d5db;
 }
-.known-molecules-deck-hint {
+.molecule-test-banner {
+  margin: 0.5rem 0;
+  padding: 0.65rem 0.85rem;
+  background: rgba(96, 165, 250, 0.15);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: #bfdbfe;
+  font-weight: 600;
+}
+.molecule-test-complete {
+  margin: 0.5rem 0;
+  padding: 0.65rem 0.85rem;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  border-radius: 0.5rem;
+  color: #86efac;
+  font-weight: 600;
+}
+.molecule-test-pass {
+  color: #86efac;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+.molecule-test-fail {
+  color: #f87171;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+.btn-molecule-test {
+  margin-top: 0.5rem;
+}
   color: #9ca3af;
   font-weight: normal;
 }

@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import {
   dealGame,
+  dealMoleculeTestGame,
+  MOLECULE_CATALOG_COUNT,
   playerAction,
   botAction,
   advanceBettingRound,
@@ -12,6 +14,8 @@ import {
 import { GameBoard } from './components/GameBoard.jsx';
 import { Lobby } from './multiplayer/Lobby.jsx';
 import { useMultiplayer } from './multiplayer/useMultiplayer.js';
+import { isLocalTestWindow } from './utils/localTest.js';
+
 import './App.css';
 
 const GITHUB_REPO = 'nathangamalnasser1-arch/periodictablepoker.com';
@@ -33,6 +37,12 @@ export default function App() {
   const startSoloGame = useCallback(() => {
     setGameKey(k => k + 1);
     setGameState(dealGame(5, 4, undefined, null, null, false));
+    setAppMode('solo');
+  }, []);
+
+  const startMoleculeTest = useCallback(() => {
+    setGameKey((k) => k + 1);
+    setGameState(dealMoleculeTestGame({ catalogIndex: 1, numPlayers: 5 }));
     setAppMode('solo');
   }, []);
 
@@ -82,6 +92,17 @@ export default function App() {
   const handleNextHand = useCallback(() => {
     setGameKey(k => k + 1);
     setGameState(prev => {
+      if (prev?.moleculeTestComplete) {
+        setAppMode('home');
+        return null;
+      }
+      if (prev?.moleculeTest) {
+        const nextIndex = (prev.moleculeTestIndex ?? 0) + 1;
+        if (nextIndex > MOLECULE_CATALOG_COUNT) {
+          return { ...prev, moleculeTestComplete: true, phase: 'showdown' };
+        }
+        return dealMoleculeTestGame({ catalogIndex: nextIndex, numPlayers: prev.players?.length ?? 5 });
+      }
       const gameEnded = isGameOver(prev);
       const nextNum = gameEnded ? 4 : (prev?.gameNumber ?? 0) + 1;
       const session = prev && !gameEnded ? {
@@ -99,10 +120,7 @@ export default function App() {
     });
   }, [mp]);
 
-  const isLocalTest = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' ||
-     window.location.hostname === '127.0.0.1' ||
-     window.location.search.includes('test=1'));
+  const isLocalTest = isLocalTestWindow();
 
   const humanIndex = mp.isMultiplayer ? mp.myPlayerIndex : HUMAN_INDEX;
   const playerNames = mp.isMultiplayer
@@ -145,6 +163,16 @@ export default function App() {
             >
               Community rules (GitHub)
             </a>
+            {isLocalTest && (
+              <button
+                type="button"
+                className="btn-secondary btn-molecule-test"
+                onClick={startMoleculeTest}
+                data-testid="start-molecule-test"
+              >
+                Test all 50 molecules
+              </button>
+            )}
           </div>
         </main>
       </div>

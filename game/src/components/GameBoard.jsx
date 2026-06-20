@@ -17,6 +17,11 @@ import {
   getKnownMolecule,
 } from '../data/knownMolecules.js';
 import {
+  getCatalogMolecule,
+  catalogSymbolsPresent,
+  MOLECULE_CATALOG_COUNT,
+} from '../data/moleculeCatalog.js';
+import {
   buildHierarchyIssueUrl,
   shouldShowCommunityHierarchy,
   githubIssuesListUrl,
@@ -50,7 +55,11 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
     );
   }
 
-  const { players, communityCards, phase, pot = 0, pots = [], currentBet = 0, roundBets = [], currentPlayerIndex, dealerIndex, winnerIndex, winnerIndices, winnerReason, lastAction, tutorial } = gameState;
+  const {
+    players, communityCards, phase, pot = 0, pots = [], currentBet = 0, roundBets = [],
+    currentPlayerIndex, dealerIndex, winnerIndex, winnerIndices, winnerReason, lastAction, tutorial,
+    moleculeTest, moleculeTestId, moleculeTestIndex, moleculeTestComplete,
+  } = gameState;
   const minOpenBet = getMinOpenBet();
   const minRaiseTo = getMinRaiseTo(gameState);
   const isShowdown = phase === 'showdown';
@@ -77,7 +86,14 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const isSplitPot = (indices.length > 1);
   const winnerReasonLabel = winnerReason === 'mass' ? 'best hand' : moleculeDisplayLabel(winnerReason);
 
-  const yourCombo = you ? getMoleculeCombo(you.holeCards, communityCards) : null;
+  const catalogTarget = moleculeTest ? getCatalogMolecule(moleculeTestId) : null;
+  const yourCombo = you
+    ? (moleculeTest && catalogSymbolsPresent(moleculeTestId, you.holeCards, communityCards)
+      ? moleculeTestId
+      : getMoleculeCombo(you.holeCards, communityCards))
+    : null;
+  const moleculeTestPassed = moleculeTest && isShowdown && you
+    && catalogSymbolsPresent(moleculeTestId, you.holeCards, communityCards);
   const youHaveWinningMolecule =
     (gameNumber === 1 && yourCombo === 'nacl') ||
     (gameNumber === 2 && yourCombo === 'h2o') ||
@@ -203,8 +219,15 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
     if (!player) return null;
     const { left, top, isTop, infoSide } = getSeatPosition(seatIndex);
     const bestHand = getBestHand(player.holeCards, communityCards);
-    const combo = getMoleculeCombo(player.holeCards, communityCards);
-    const comboLabel = moleculeDisplayLabel(combo) || null;
+    const combo = moleculeTest && seatIndex === humanIndex && catalogSymbolsPresent(moleculeTestId, player.holeCards, communityCards)
+      ? moleculeTestId
+      : getMoleculeCombo(player.holeCards, communityCards);
+    const comboLabel = combo
+      ? (getCatalogMolecule(combo)?.label || moleculeDisplayLabel(combo) || null)
+      : null;
+    const comboWikiUrl = combo
+      ? (getCatalogMolecule(combo)?.wikiUrl || moleculeWikiUrl(combo))
+      : null;
     const isYou = seatIndex === humanIndex;
     const showHandInfo = showCardsOpen || isYou;
     const isWinnerFlash = showdownWinnerIndices.includes(seatIndex) && flashingWinnerIndex != null;
@@ -237,12 +260,12 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
             )}
             {comboLabel && !folded && (
               <a
-                href={moleculeWikiUrl(combo)}
+                href={comboWikiUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="player-combo-badge player-combo-link"
                 data-testid={`combo-badge-${combo}`}
-                title={`${getKnownMolecule(combo)?.name ?? comboLabel} on Wikipedia`}
+                title={`${getKnownMolecule(combo)?.name ?? getCatalogMolecule(combo)?.name ?? comboLabel} on Wikipedia`}
               >
                 {comboLabel}!
               </a>
@@ -268,7 +291,17 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
 
   return (
     <div className="game-board poker-view" data-testid="game-board">
-      {gameNumber === 3 && (
+      {moleculeTest && catalogTarget && !moleculeTestComplete && (
+        <div className="molecule-test-banner" data-testid="molecule-test-banner">
+          Molecule test {moleculeTestIndex}/{MOLECULE_CATALOG_COUNT}: {catalogTarget.label} — need {catalogTarget.cardHint}
+        </div>
+      )}
+      {moleculeTestComplete && (
+        <div className="molecule-test-complete" data-testid="molecule-test-complete">
+          All {MOLECULE_CATALOG_COUNT} molecule tests complete.
+        </div>
+      )}
+      {gameNumber === 3 && !moleculeTest && (
         <div className="chonp-yell-msg poker-view-msg" data-testid="chonp-yell-msg">Yell out CHONP!</div>
       )}
       {isRiverAllIn && !isShowdown && (
@@ -287,8 +320,24 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
               <>Winner: {winnerName} ({winnerReasonLabel})!</>
             )}
           </div>
+          {moleculeTest && isShowdown && (
+            <p
+              className={moleculeTestPassed ? 'molecule-test-pass' : 'molecule-test-fail'}
+              data-testid="molecule-test-result"
+            >
+              {moleculeTestPassed
+                ? `PASS — ${catalogTarget?.label} cards present (${catalogTarget?.cardHint})`
+                : `FAIL — expected ${catalogTarget?.label} (${catalogTarget?.cardHint})`}
+            </p>
+          )}
           <p className="showdown-next-hint">
-            {isGameOver ? 'Game over — click New Game to play again.' : 'Click the button below to play the next hand.'}
+            {moleculeTestComplete
+              ? 'Click below to return home.'
+              : isGameOver
+                ? 'Game over — click New Game to play again.'
+                : moleculeTest
+                  ? `Click below for molecule ${Math.min((moleculeTestIndex ?? 0) + 1, MOLECULE_CATALOG_COUNT)} of ${MOLECULE_CATALOG_COUNT}.`
+                  : 'Click the button below to play the next hand.'}
           </p>
           {isGameOver && gameNumber >= 4 && (
             <p className="session-over-msg" data-testid="session-over-msg">
@@ -337,7 +386,11 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
           <div className="showdown-cta">
             {onNextHand ? (
               <button type="button" className="btn-primary btn-showdown-next" onClick={onNextHand} data-testid="showdown-next-btn">
-                {isGameOver ? 'New Game' : 'Next Hand'}
+                {moleculeTestComplete
+                  ? 'Back to home'
+                  : moleculeTest
+                    ? ((moleculeTestIndex ?? 0) >= MOLECULE_CATALOG_COUNT ? 'Finish test' : `Next molecule (${(moleculeTestIndex ?? 0) + 1}/${MOLECULE_CATALOG_COUNT})`)
+                    : (isGameOver ? 'New Game' : 'Next Hand')}
               </button>
             ) : (
               <span className="waiting-msg" data-testid="showdown-next-btn">Waiting for host to deal next hand…</span>

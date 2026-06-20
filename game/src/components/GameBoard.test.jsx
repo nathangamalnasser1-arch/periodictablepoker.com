@@ -512,4 +512,41 @@ describe('GameBoard', () => {
     );
     expect(container.querySelectorAll('[data-testid="card-facedown"]').length).toBe(0);
   });
+
+  it('shows molecule test banner when in molecule test mode', () => {
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'C' }, { symbol: 'H' }], chips: 1000, folded: false }],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+      moleculeTest: true,
+      moleculeTestIndex: 1,
+      moleculeTestId: 'chonp',
+    };
+    render(
+      <GameBoard gameState={gameState} gameNumber={1} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />
+    );
+    const banner = screen.getByTestId('molecule-test-banner');
+    expect(banner.textContent).toContain('1/50');
+    expect(banner.textContent).toContain('CHONP');
+    expect(banner.textContent).toContain('C + H + O + N + P');
+  });
+
+  it('shows PASS at showdown when catalog molecule cards are present', () => {
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }, { symbol: 'O' }], chips: 1000, folded: false }],
+      communityCards: [{ symbol: 'Fe' }, { symbol: 'Cu' }, { symbol: 'Au' }],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 0,
+      winnerReason: 'h2o',
+      moleculeTest: true,
+      moleculeTestIndex: 2,
+      moleculeTestId: 'h2o',
+    };
+    render(
+      <GameBoard gameState={gameState} gameNumber={2} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />
+    );
+    expect(screen.getByTestId('molecule-test-result').textContent).toMatch(/^PASS/);
+  });
 });

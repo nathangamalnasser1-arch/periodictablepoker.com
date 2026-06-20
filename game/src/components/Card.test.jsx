@@ -62,4 +62,11 @@ describe('Card', () => {
     );
     expect(container.querySelector('.card-known-molecule')).toBeFalsy();
   });
+
+  it('highlights catalog molecule symbols in test mode', () => {
+    const { container } = render(
+      <Card element={{ symbol: 'Si', name: 'Silicon', number: 14 }} moleculeCombo="sio2" />
+    );
+    expect(container.querySelector('.card-known-molecule')).toBeTruthy();
+  });
 });
