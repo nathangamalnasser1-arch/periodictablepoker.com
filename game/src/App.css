@@ -710,6 +710,18 @@ a.card.card-known-molecule:hover {
   line-height: 1.5;
   color: #d1d5db;
 }
+.known-molecules-deck-hint {
+  color: #9ca3af;
+  font-weight: normal;
+}
+.known-molecules-list {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.known-molecules-list li {
+  margin: 0.25rem 0;
+}
 .known-molecule-link,
 .known-molecule-index-link {
   color: #fcd34d;
@@ -938,6 +950,11 @@ a.card.card-known-molecule:hover {
   font-size: 1.75rem;
   margin: 0 0 1rem;
   color: #e5e7eb;
+}
+.scoreboard-deck-hint {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.875rem;
+  color: #9ca3af;
 }
 .scoreboard-loading {
   color: #9ca3af;

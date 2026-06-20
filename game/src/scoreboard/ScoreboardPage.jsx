@@ -77,6 +77,9 @@ export function ScoreboardPage() {
       <header>
         <h1>Periodic Table Poker</h1>
         <p className="tagline">Scoreboard — molecule wins (NaCl, H₂O, CHONP)</p>
+        <p className="scoreboard-deck-hint" data-testid="scoreboard-deck-hint">
+          One card per element (118 unique symbols). Subscripts are shorthand — H₂O means H + O, not two O cards.
+        </p>
       </header>
       <main className="scoreboard-main">
         <h2 className="scoreboard-title">Scoreboard</h2>

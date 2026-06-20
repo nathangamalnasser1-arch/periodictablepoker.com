@@ -67,7 +67,7 @@ describe('GameBoard', () => {
     expect(badge.getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Water');
   });
 
-  it('shows known molecules panel with Wikipedia links', () => {
+  it('shows known molecules panel with Wikipedia links and card hints', () => {
     const gameState = {
       players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false }],
       communityCards: [],
@@ -76,10 +76,27 @@ describe('GameBoard', () => {
     };
     render(<GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />);
     expect(screen.getByTestId('known-molecules-panel')).toBeTruthy();
+    expect(screen.getByTestId('known-molecules-panel').textContent).toMatch(/one card per element/i);
     expect(screen.getByTestId('known-molecule-nacl').getAttribute('href')).toContain('Sodium_chloride');
-    expect(screen.getByTestId('known-molecule-h2o').getAttribute('href')).toContain('Water');
+    expect(screen.getByTestId('known-molecule-h2o').textContent).toContain('H + O');
     expect(screen.getByTestId('known-molecule-chonp').getAttribute('href')).toContain('DNA');
+    expect(screen.getByTestId('known-molecule-co2').getAttribute('href')).toContain('Carbon_dioxide');
+    expect(screen.getByTestId('known-molecule-co2').textContent).toContain('C + O');
     expect(screen.getByTestId('molecules-wiki-index').getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Lists_of_molecules');
+  });
+
+  it('rules panel explains one card per element and subscript shorthand', () => {
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false }],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+    };
+    render(<GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />);
+    const rules = screen.getByTestId('rules-panel');
+    expect(rules.textContent).toContain('One card per element');
+    expect(rules.textContent).toContain('CO₂ = C + O');
+    expect(rules.textContent).toContain('CHONP → H₂O → NaCl → CO₂ → best mass');
   });
 
   it('does not show Next Hand button when not showdown', () => {

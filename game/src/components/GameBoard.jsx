@@ -11,6 +11,9 @@ import {
   KNOWN_MOLECULES,
   MOLECULES_WIKI_INDEX,
   moleculeWikiUrl,
+  moleculeDisplayLabel,
+  moleculeRankingLabel,
+  knownMoleculeLinkTitle,
   getKnownMolecule,
 } from '../data/knownMolecules.js';
 import {
@@ -72,7 +75,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   }).filter(Boolean);
   const winnerName = winnerNames.length === 1 ? winnerNames[0] : winnerNames.length > 1 ? winnerNames.join(', ') : '';
   const isSplitPot = (indices.length > 1);
-  const winnerReasonLabel = winnerReason === 'nacl' ? 'NaCl' : winnerReason === 'h2o' ? 'H₂O' : winnerReason === 'chonp' ? 'CHONP' : winnerReason === 'mass' ? 'best hand' : '';
+  const winnerReasonLabel = winnerReason === 'mass' ? 'best hand' : moleculeDisplayLabel(winnerReason);
 
   const yourCombo = you ? getMoleculeCombo(you.holeCards, communityCards) : null;
   const youHaveWinningMolecule =
@@ -201,7 +204,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
     const { left, top, isTop, infoSide } = getSeatPosition(seatIndex);
     const bestHand = getBestHand(player.holeCards, communityCards);
     const combo = getMoleculeCombo(player.holeCards, communityCards);
-    const comboLabel = combo === 'chonp' ? 'CHONP' : combo === 'h2o' ? 'H₂O' : combo === 'nacl' ? 'NaCl' : null;
+    const comboLabel = moleculeDisplayLabel(combo) || null;
     const isYou = seatIndex === humanIndex;
     const showHandInfo = showCardsOpen || isYou;
     const isWinnerFlash = showdownWinnerIndices.includes(seatIndex) && flashingWinnerIndex != null;
@@ -344,17 +347,17 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
       )}
       {tutorial && isShowdown && gameNumber === 1 && winnerName && (
         <div className="tutorial-instruction" data-testid="tutorial-instruction-1">
-          <strong>Tutorial Game 1 complete!</strong> NaCl (sodium chloride) is one of the three best molecule hands. The winner took the pot. Click <strong>Next Hand</strong> for Game 2 — H₂O.
+          <strong>Tutorial Game 1 complete!</strong> NaCl (sodium chloride) — Na + Cl — is a top molecule hand. The winner took the pot. Click <strong>Next Hand</strong> for Game 2 — H₂O (H + O).
         </div>
       )}
       {tutorial && isShowdown && gameNumber === 2 && winnerName && (
         <div className="tutorial-instruction" data-testid="tutorial-instruction-2">
-          <strong>Tutorial Game 2 complete!</strong> H₂O (water) is the <strong>second-best</strong> molecule hand. Click <strong>Next Hand</strong> for Game 3 — CHONP (the best hand).
+          <strong>Tutorial Game 2 complete!</strong> H₂O (water) — H + O — is the <strong>second-best</strong> molecule hand. Click <strong>Next Hand</strong> for Game 3 — CHONP (C + H + O + N + P, the best hand).
         </div>
       )}
       {tutorial && isShowdown && gameNumber === 3 && winnerName && (
         <div className="tutorial-instruction" data-testid="tutorial-instruction-3">
-          <strong>Tutorial Game 3 complete!</strong> CHONP (carbon, hydrogen, oxygen, nitrogen, phosphorus) are the atoms of DNA — rare in the universe and proof of life, so CHONP is the <strong>best hand</strong>. Best to third-best: CHONP → H₂O → NaCl. Click <strong>Next Hand</strong> to start the real game with 1000 chips each.
+          <strong>Tutorial Game 3 complete!</strong> CHONP — C + H + O + N + P — are the atoms of DNA. Best to fourth-best: {moleculeRankingLabel()}. Click <strong>Next Hand</strong> to start the real game with 1000 chips each.
         </div>
       )}
       {gameNumber === 4 && (
@@ -363,30 +366,30 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
         </div>
       )}
       <div className="rules-panel" data-testid="rules-panel">
-        <strong>Rules so far:</strong> Same hand ranking every hand: best = CHONP (C, H, O, N, P — atoms of DNA, proof of life), then H₂O, then NaCl, then highest sum of atomic mass of your best 5 cards. (Tutorial hands 1–3 just show NaCl, then H₂O, then CHONP in order.) <strong>All-in:</strong> If you or a bot goes all-in, that player cannot fold and stays in until showdown; others must call (or go all-in) to stay in or fold. When everyone still in is all-in, no further bets — remaining community cards are dealt, then showdown. {gameNumber >= 4 && (<><strong>Bust:</strong> Once a player has 0 atomcoins after a hand, they lose and the game is over.</>)}
+        <strong>Rules so far:</strong> One card per element (118 unique symbols). A molecule hand means you have those element cards on the table — subscripts are chemistry shorthand only (H₂O = H + O, CO₂ = C + O; not O₂ or N₂, which need duplicate cards). Ranking: {moleculeRankingLabel()}. (Tutorial hands 1–3 show NaCl, H₂O, then CHONP.) <strong>All-in:</strong> If you or a bot goes all-in, that player cannot fold and stays in until showdown; others must call (or go all-in) to stay in or fold. When everyone still in is all-in, no further bets — remaining community cards are dealt, then showdown. {gameNumber >= 4 && (<><strong>Bust:</strong> Once a player has 0 atomcoins after a hand, they lose and the game is over.</>)}
         {gameNumber >= 4 && (
           <span className="rules-github-hint"> Want to change the hierarchy? Propose on GitHub — community votes with reactions.</span>
         )}
       </div>
       <div className="known-molecules-panel" data-testid="known-molecules-panel">
-        <strong>Known molecules:</strong>
-        {' '}
-        {Object.values(KNOWN_MOLECULES).map((mol, i) => (
-          <span key={mol.id}>
-            {i > 0 && ' · '}
-            <a
-              href={mol.wikiUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="known-molecule-link"
-              data-testid={`known-molecule-${mol.id}`}
-              title={mol.name}
-            >
-              {mol.label}
-            </a>
-          </span>
-        ))}
-        {' · '}
+        <strong>Known molecules</strong>
+        <span className="known-molecules-deck-hint"> (one card per element):</span>
+        <ul className="known-molecules-list">
+          {Object.values(KNOWN_MOLECULES).map((mol) => (
+            <li key={mol.id}>
+              <a
+                href={mol.wikiUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="known-molecule-link"
+                data-testid={`known-molecule-${mol.id}`}
+                title={knownMoleculeLinkTitle(mol)}
+              >
+                {mol.label} ({mol.name}) — {mol.cardHint}
+              </a>
+            </li>
+          ))}
+        </ul>
         <a
           href={MOLECULES_WIKI_INDEX}
           target="_blank"

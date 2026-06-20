@@ -1,4 +1,5 @@
 import { createDeck, shuffle } from '../data/elements.js';
+import { matchMoleculeCombo, getKnownMolecule, MASS_TIER } from '../data/knownMolecules.js';
 
 /** Texas Hold'em phases */
 export const PHASES = {
@@ -613,22 +614,8 @@ export function getBestHandWeight(holeCards, communityCards) {
   return weight;
 }
 
-function countSymbols(cards) {
-  const counts = {};
-  (cards || []).forEach((c) => {
-    const s = c?.symbol;
-    if (s) counts[s] = (counts[s] || 0) + 1;
-  });
-  return counts;
-}
-
 export function getMoleculeCombo(holeCards, communityCards) {
-  const all = [...(holeCards || []), ...(communityCards || [])];
-  const c = countSymbols(all);
-  if ((c['C'] || 0) >= 1 && (c['H'] || 0) >= 1 && (c['O'] || 0) >= 1 && (c['N'] || 0) >= 1 && (c['P'] || 0) >= 1) return 'chonp';
-  if ((c['H'] || 0) >= 1 && (c['O'] || 0) >= 1) return 'h2o';
-  if ((c['Na'] || 0) >= 1 && (c['Cl'] || 0) >= 1) return 'nacl';
-  return null;
+  return matchMoleculeCombo(holeCards, communityCards);
 }
 
 export function getBestHand(holeCards, communityCards) {
@@ -650,11 +637,10 @@ export function getBestHand(holeCards, communityCards) {
 
 function getHandTier(holeCards, communityCards) {
   const combo = getMoleculeCombo(holeCards, communityCards);
-  if (combo === 'chonp') return { tier: 1, mass: 0, reason: 'chonp' };
-  if (combo === 'h2o') return { tier: 2, mass: 0, reason: 'h2o' };
-  if (combo === 'nacl') return { tier: 3, mass: 0, reason: 'nacl' };
+  const mol = getKnownMolecule(combo);
+  if (mol) return { tier: mol.tier, mass: 0, reason: mol.id };
   const mass = getBestHandWeight(holeCards, communityCards);
-  return { tier: 4, mass, reason: 'mass' };
+  return { tier: MASS_TIER, mass, reason: 'mass' };
 }
 
 export function getWinner(gameState, gameNumber) {
@@ -667,21 +653,21 @@ export function getWinner(gameState, gameNumber) {
     return { winnerIndex: idx, winnerIndices: [idx], reason };
   }
 
-  let bestTier = 5;
+  let bestTier = MASS_TIER + 1;
   let bestMass = 0;
   const candidates = [];
   active.forEach((p) => {
     const i = players.indexOf(p);
-    const { tier, mass } = getHandTier(p.holeCards, communityCards);
+    const { tier, mass, reason } = getHandTier(p.holeCards, communityCards);
     const wins =
-      tier < bestTier || (tier === bestTier && tier === 4 && mass > bestMass);
+      tier < bestTier || (tier === bestTier && reason === 'mass' && mass > bestMass);
     if (wins) {
       bestTier = tier;
       bestMass = mass;
       candidates.length = 0;
-      candidates.push({ index: i, tier, mass });
-    } else if (tier === bestTier && (tier !== 4 || mass === bestMass)) {
-      candidates.push({ index: i, tier, mass });
+      candidates.push({ index: i, tier, mass, reason });
+    } else if (tier === bestTier && (reason !== 'mass' || mass === bestMass)) {
+      candidates.push({ index: i, tier, mass, reason });
     }
   });
 

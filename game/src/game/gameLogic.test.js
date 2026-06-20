@@ -410,7 +410,7 @@ describe('gameLogic', () => {
       expect(next.currentPlayerIndex).toBe(2);
     });
 
-    it('hand order: CHONP beats H₂O beats NaCl beats mass (any game)', () => {
+    it('hand order: CHONP beats H₂O beats NaCl beats CO₂ beats mass (any game)', () => {
       const base = { communityCards: [{ symbol: 'O' }, { symbol: 'N' }, { symbol: 'P' }, { mass: 1 }, { mass: 2 }], phase: PHASES.RIVER };
       const withNaCl = { ...base, players: [
         { holeCards: [{ symbol: 'Na' }, { symbol: 'Cl' }], folded: false },
@@ -435,6 +435,22 @@ describe('gameLogic', () => {
       const { winnerIndex: w3, reason: r3 } = getWinner(withMass, 4);
       expect(w3).toBe(1);
       expect(r3).toBe('nacl');
+
+      const withCo2 = { ...base, players: [
+        { holeCards: [{ mass: 100 }, { mass: 90 }], folded: false },
+        { holeCards: [{ symbol: 'C' }, { symbol: 'O' }], folded: false },
+      ] };
+      const { winnerIndex: wCo2, reason: rCo2 } = getWinner(withCo2, 4);
+      expect(wCo2).toBe(1);
+      expect(rCo2).toBe('co2');
+
+      const co2VsNacl = { ...base, players: [
+        { holeCards: [{ symbol: 'C' }, { symbol: 'O' }], folded: false },
+        { holeCards: [{ symbol: 'Na' }, { symbol: 'Cl' }], folded: false },
+      ] };
+      const { winnerIndex: wCo2Na, reason: rCo2Na } = getWinner(co2VsNacl, 4);
+      expect(wCo2Na).toBe(1);
+      expect(rCo2Na).toBe('nacl');
 
       const massVsMass = { ...base, players: [
         { holeCards: [{ mass: 100 }, { mass: 90 }], folded: false },
@@ -476,6 +492,11 @@ describe('gameLogic', () => {
       const hole = [{ symbol: 'C' }, { symbol: 'H' }];
       const community = [{ symbol: 'O' }, { symbol: 'N' }, { symbol: 'P' }];
       expect(getMoleculeCombo(hole, community)).toBe('chonp');
+    });
+    it('returns co2 when C and O present without H', () => {
+      const hole = [{ symbol: 'C' }];
+      const community = [{ symbol: 'O' }];
+      expect(getMoleculeCombo(hole, community)).toBe('co2');
     });
     it('returns null when no combo', () => {
       expect(getMoleculeCombo([{ symbol: 'Fe' }], [])).toBe(null);
