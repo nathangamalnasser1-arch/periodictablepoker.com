@@ -940,3 +940,56 @@ header h1 {
 .scoreboard-back a:hover {
   text-decoration: underline;
 }
+
+/* Community hierarchy (GitHub proposals) */
+.community-hierarchy {
+  margin: 0.75rem 0 1rem;
+  padding: 1rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  border-radius: 0.5rem;
+}
+.community-hierarchy-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: #e5e7eb;
+}
+.community-hierarchy-hint,
+.community-hierarchy-life-first {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  line-height: 1.45;
+}
+.community-hierarchy-life-first {
+  color: #fcd34d;
+}
+.community-hierarchy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+.btn-hierarchy-secondary {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  text-decoration: none;
+  text-align: center;
+}
+.rules-github-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-weight: normal;
+  color: #94a3b8;
+}
+.btn-community-github {
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+}
+.community-hierarchy-err {
+  color: #f87171;
+  font-size: 0.875rem;
+}

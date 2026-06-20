@@ -136,6 +136,15 @@ export default function App() {
             <a href="/scoreboard.html" className="btn-secondary btn-view-scoreboard-home" data-testid="view-scoreboard-home">
               View Scoreboard
             </a>
+            <a
+              href={`https://github.com/${GITHUB_REPO}/issues`}
+              className="btn-secondary btn-community-github"
+              data-testid="community-rules-github-home"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Community rules (GitHub)
+            </a>
           </div>
         </main>
       </div>

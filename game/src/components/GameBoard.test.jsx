@@ -364,6 +364,66 @@ describe('GameBoard', () => {
     });
   });
 
+  it('shows community hierarchy in game 4+ with GitHub submit links', () => {
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ symbol: 'Fe', mass: 56 }, { symbol: 'Cu', mass: 64 }], chips: 1000, folded: false },
+        { id: 'player-1', holeCards: [{ mass: 1 }], chips: 1000, folded: false },
+      ],
+      communityCards: [{ symbol: 'O', mass: 16 }, { symbol: 'N', mass: 14 }, { symbol: 'C', mass: 12 }],
+      phase: 'flop',
+      dealerIndex: 0,
+      currentPlayerIndex: 0,
+    };
+    render(
+      <GameBoard
+        gameState={gameState}
+        gameNumber={4}
+        onPlayerAction={() => {}}
+        onBotTurn={() => {}}
+        onNextHand={() => {}}
+        isGameOver={false}
+        githubRepo="owner/repo"
+      />
+    );
+    expect(screen.getByTestId('community-hierarchy')).toBeTruthy();
+    expect(screen.getByTestId('life-first-reminder')).toBeTruthy();
+    const handLink = screen.getByTestId('submit-hand-hierarchy');
+    expect(handLink.href).toContain('github.com/owner/repo/issues/new');
+    expect(decodeURIComponent(handLink.href)).toContain('Hierarchy proposal');
+    expect(screen.getByTestId('propose-new-rule').href).toContain('issues/new');
+    expect(screen.getByTestId('view-github-proposals').href).toBe('https://github.com/owner/repo/issues');
+  });
+
+  it('does not show community hierarchy in tutorial game 1', () => {
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'Na' }], chips: 1000, folded: false }],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+    };
+    render(
+      <GameBoard gameState={gameState} gameNumber={1} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />
+    );
+    expect(screen.queryByTestId('community-hierarchy')).toBeFalsy();
+  });
+
+  it('hides community hierarchy when human folded', () => {
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ mass: 1 }], chips: 900, folded: true },
+        { id: 'player-1', holeCards: [{ mass: 2 }], chips: 1100, folded: false },
+      ],
+      communityCards: [{ mass: 3 }, { mass: 4 }, { mass: 5 }],
+      phase: 'flop',
+      dealerIndex: 0,
+    };
+    render(
+      <GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />
+    );
+    expect(screen.queryByTestId('community-hierarchy')).toBeFalsy();
+  });
+
   it('hides opponent hole cards in multiplayer when openCards is false', () => {
     const gameState = {
       players: [

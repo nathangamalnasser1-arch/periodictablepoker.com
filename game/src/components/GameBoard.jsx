@@ -7,6 +7,12 @@ import {
   submitMoleculeScore,
   moleculeLabel,
 } from '../scoreboard/scoreboard.js';
+import {
+  buildHierarchyIssueUrl,
+  shouldShowCommunityHierarchy,
+  githubIssuesListUrl,
+  validateProposalName,
+} from '../hierarchy/hierarchy.js';
 
 const HUMAN_INDEX = 0;
 const NUM_PLAYERS = 5;
@@ -72,6 +78,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const showCardsOpen = isShowdown || !isMultiplayer || openCards;
 
   const [scoreboardName, setScoreboardName] = useState('');
+  const [hierarchyName, setHierarchyName] = useState('');
   const [scoreboardSubmitting, setScoreboardSubmitting] = useState(false);
   const [scoreboardSubmitted, setScoreboardSubmitted] = useState(false);
   const [scoreboardError, setScoreboardError] = useState(null);
@@ -167,6 +174,21 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
       setScoreboardSubmitting(false);
     }
   };
+
+  const showCommunityHierarchy = shouldShowCommunityHierarchy({
+    gameNumber,
+    humanFolded: !!you?.folded,
+  });
+  const repo = githubRepo ?? 'nathangamalnasser1-arch/periodictablepoker.com';
+  const yourBestHand = you ? getBestHand(you.holeCards, communityCards) : { cards: [], weight: 0 };
+  const hierarchyNameValid = validateProposalName(hierarchyName);
+  const hierarchyHandUrl = showCommunityHierarchy && hierarchyNameValid.ok
+    ? buildHierarchyIssueUrl(repo, { displayName: hierarchyName, bestHand: yourBestHand })
+    : null;
+  const hierarchyNewRuleUrl = showCommunityHierarchy && hierarchyNameValid.ok
+    ? buildHierarchyIssueUrl(repo, { displayName: hierarchyName, proposalType: 'new-rule' })
+    : null;
+  const githubIssuesUrl = githubIssuesListUrl(repo);
 
   const renderSeat = (player, seatIndex, displayName, isDealer) => {
     if (!player) return null;
@@ -320,7 +342,64 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
       )}
       <div className="rules-panel" data-testid="rules-panel">
         <strong>Rules so far:</strong> Same hand ranking every hand: best = CHONP (C, H, O, N, P — atoms of DNA, proof of life), then H₂O, then NaCl, then highest sum of atomic mass of your best 5 cards. (Tutorial hands 1–3 just show NaCl, then H₂O, then CHONP in order.) <strong>All-in:</strong> If you or a bot goes all-in, that player cannot fold and stays in until showdown; others must call (or go all-in) to stay in or fold. When everyone still in is all-in, no further bets — remaining community cards are dealt, then showdown. {gameNumber >= 4 && (<><strong>Bust:</strong> Once a player has 0 atomcoins after a hand, they lose and the game is over.</>)}
+        {gameNumber >= 4 && (
+          <span className="rules-github-hint"> Want to change the hierarchy? Propose on GitHub — community votes with reactions.</span>
+        )}
       </div>
+      {showCommunityHierarchy && (
+        <div className="community-hierarchy" data-testid="community-hierarchy">
+          <h3 className="community-hierarchy-title">Community hierarchy</h3>
+          <p className="community-hierarchy-hint">
+            Propose hands on GitHub; the community votes with reactions. The hierarchy evolves as science and play experience grow.
+          </p>
+          <p className="community-hierarchy-life-first" data-testid="life-first-reminder">
+            Life-first: do not argue destruction makes a hand better — argue life, energy, or scientific value.
+          </p>
+          <input
+            type="text"
+            placeholder="Your name (optional)"
+            value={hierarchyName}
+            onChange={(e) => setHierarchyName(e.target.value)}
+            className="player-hierarchy-input"
+            data-testid="hierarchy-name-input"
+          />
+          <div className="community-hierarchy-actions">
+            {hierarchyHandUrl ? (
+              <a
+                href={hierarchyHandUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-hierarchy"
+                data-testid="submit-hand-hierarchy"
+              >
+                Submit hand to Hierarchy
+              </a>
+            ) : (
+              <span className="community-hierarchy-err" data-testid="hierarchy-name-error">{hierarchyNameValid.error}</span>
+            )}
+            {hierarchyNewRuleUrl && (
+              <a
+                href={hierarchyNewRuleUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary btn-hierarchy-secondary"
+                data-testid="propose-new-rule"
+              >
+                Propose new rule
+              </a>
+            )}
+            <a
+              href={githubIssuesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary btn-hierarchy-secondary"
+              data-testid="view-github-proposals"
+            >
+              View proposals on GitHub
+            </a>
+          </div>
+        </div>
+      )}
       <div className="poker-table-wrap">
         <div className="poker-table">
           <div className="table-center">
