@@ -33,6 +33,28 @@ export function hasOpenSlot(game) {
   return ids.some(id => !id);
 }
 
+/** User-facing message for Firebase auth/network failures. */
+export function formatFirebaseError(err) {
+  const code = err?.code ?? '';
+  const msg = err?.message ?? String(err);
+  if (code === 'auth/configuration-not-found' || msg.includes('CONFIGURATION_NOT_FOUND')) {
+    return 'Firebase Authentication is not set up yet. Open Firebase Console → Authentication → Get started, then enable Anonymous sign-in.';
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'Anonymous sign-in is not enabled. Open Firebase Console → Authentication → Sign-in method → enable Anonymous, then try again.';
+  }
+  if (code === 'auth/admin-restricted-operation') {
+    return 'Anonymous sign-in is blocked for this app. Enable Anonymous in Firebase Console → Authentication → Sign-in method.';
+  }
+  if (code === 'auth/network-request-failed' || msg.includes('network-request-failed')) {
+    if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+      return 'Firebase emulators not running. In the game folder run: npm run emulators';
+    }
+    return 'Cannot reach Firebase. Check your internet connection and restart the dev server.';
+  }
+  return msg.replace(/^Firebase: Error \([^)]+\)\.\s*/i, '');
+}
+
 function listJoinableGames(docs) {
   return docs
     .map(d => ({ id: d.id, ...d.data() }))

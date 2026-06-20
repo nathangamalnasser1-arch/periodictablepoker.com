@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { session, MIN_PLAYERS } from './core.js';
+import { session, MIN_PLAYERS, formatFirebaseError } from './core.js';
 import { dealGame } from '../game/gameLogic.js';
 
 export function useMultiplayer(onRemoteState) {
@@ -12,6 +12,7 @@ export function useMultiplayer(onRemoteState) {
   const [waitingGames, setWaitingGames] = useState([]);
   const [waitingGamesLoading, setWaitingGamesLoading] = useState(false);
   const [openCards, setOpenCards] = useState(false);
+  const [busy, setBusy] = useState(null); // 'create' | 'join' | null
   const unsubRef = useRef(null);
   const waitingUnsubRef = useRef(null);
 
@@ -27,7 +28,7 @@ export function useMultiplayer(onRemoteState) {
       const games = await session.fetchWaiting();
       setWaitingGames(games);
     } catch (e) {
-      setError(e.message);
+      setError(formatFirebaseError(e));
     } finally {
       setWaitingGamesLoading(false);
     }
@@ -43,7 +44,7 @@ export function useMultiplayer(onRemoteState) {
         setWaitingGamesLoading(false);
       });
     } catch (e) {
-      setError(e.message);
+      setError(formatFirebaseError(e));
       setWaitingGamesLoading(false);
     }
   }, [stopWaitingList]);
@@ -75,6 +76,7 @@ export function useMultiplayer(onRemoteState) {
 
   const create = useCallback(async (gameName, options = {}) => {
     setError(null);
+    setBusy('create');
     stopWaitingList();
     try {
       const { keyword: kw, playerIndex } = await session.create(gameName, options);
@@ -83,19 +85,30 @@ export function useMultiplayer(onRemoteState) {
       setOpenCards(!!options.openCards);
       setMode('waiting');
       unsubRef.current = session.subscribe(handleState, handleStatus);
-    } catch (e) { setError(e.message); }
-  }, [handleState, handleStatus, stopWaitingList]);
+    } catch (e) {
+      setError(formatFirebaseError(e));
+      await startWaitingList();
+    } finally {
+      setBusy(null);
+    }
+  }, [handleState, handleStatus, stopWaitingList, startWaitingList]);
 
   const joinByKeyword = useCallback(async (kw) => {
     setError(null);
+    setBusy('join');
     stopWaitingList();
     try {
       const { playerIndex } = await session.join(kw);
       setMyPlayerIndex(playerIndex);
       setMode('waiting');
       unsubRef.current = session.subscribe(handleState, handleStatus);
-    } catch (e) { setError(e.message); }
-  }, [handleState, handleStatus, stopWaitingList]);
+    } catch (e) {
+      setError(formatFirebaseError(e));
+      await startWaitingList();
+    } finally {
+      setBusy(null);
+    }
+  }, [handleState, handleStatus, stopWaitingList, startWaitingList]);
 
   const startGame = useCallback(async () => {
     setError(null);
@@ -104,7 +117,7 @@ export function useMultiplayer(onRemoteState) {
       const playerCount = lobbyCount >= MIN_PLAYERS ? lobbyCount : numPlayers;
       const initialState = dealGame(playerCount, 4, undefined, null, null, false);
       await session.start(initialState);
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(formatFirebaseError(e)); }
   }, [numPlayers, lobbyData]);
 
   const writeState = useCallback((state) => {
@@ -149,6 +162,7 @@ export function useMultiplayer(onRemoteState) {
     isHost: myPlayerIndex === 0,
     isMultiplayer: mode === 'playing',
     openCards,
+    busy,
     minPlayers: MIN_PLAYERS,
   };
 }

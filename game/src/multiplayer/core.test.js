@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { slug, expired, clean, hasOpenSlot } from './core.js';
+import { slug, expired, clean, hasOpenSlot, formatFirebaseError } from './core.js';
 
 describe('multiplayer core helpers', () => {
   describe('slug', () => {
@@ -50,6 +50,20 @@ describe('multiplayer core helpers', () => {
 
     it('handles null', () => {
       expect(clean(null)).toBe(null);
+    });
+  });
+
+  describe('formatFirebaseError', () => {
+    it('explains when auth is not configured', () => {
+      const msg = formatFirebaseError({ code: 'auth/configuration-not-found', message: 'Firebase: Error (auth/configuration-not-found).' });
+      expect(msg).toMatch(/Get started/i);
+      expect(msg).toMatch(/Anonymous/i);
+    });
+
+    it('explains when anonymous auth is disabled', () => {
+      const msg = formatFirebaseError({ code: 'auth/operation-not-allowed', message: 'Firebase: Error (auth/operation-not-allowed).' });
+      expect(msg).toMatch(/Anonymous/i);
+      expect(msg).toMatch(/Firebase Console/i);
     });
   });
 });

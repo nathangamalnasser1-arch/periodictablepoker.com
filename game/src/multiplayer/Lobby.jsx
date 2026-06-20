@@ -100,7 +100,7 @@ export function Lobby({ mp, onSolo }) {
             placeholder="Enter a game name"
             value={gameName}
             onChange={e => setGameName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && mp.create(gameName)}
+            onKeyDown={e => e.key === 'Enter' && !mp.busy && mp.create(gameName, { openCards })}
             className="lobby-input"
           />
           <label className="lobby-checkbox" data-testid="open-cards-option">
@@ -114,9 +114,9 @@ export function Lobby({ mp, onSolo }) {
           <button
             className="btn-primary"
             onClick={() => mp.create(gameName, { openCards })}
-            disabled={!gameName.trim()}
+            disabled={!gameName.trim() || mp.busy === 'create'}
           >
-            Create
+            {mp.busy === 'create' ? 'Creating…' : 'Create'}
           </button>
         </div>
 
@@ -127,15 +127,15 @@ export function Lobby({ mp, onSolo }) {
             placeholder="game-keyword"
             value={joinKey}
             onChange={e => setJoinKey(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && mp.joinByKeyword(joinKey)}
+            onKeyDown={e => e.key === 'Enter' && !mp.busy && mp.joinByKeyword(joinKey)}
             className="lobby-input"
           />
           <button
             className="btn-primary"
             onClick={() => mp.joinByKeyword(joinKey)}
-            disabled={!joinKey.trim()}
+            disabled={!joinKey.trim() || mp.busy === 'join'}
           >
-            Join
+            {mp.busy === 'join' ? 'Joining…' : 'Join'}
           </button>
         </div>
 
