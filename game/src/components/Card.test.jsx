@@ -48,4 +48,18 @@ describe('Card', () => {
     render(<Card element={{ symbol: 'H', name: 'Hydrogen' }} faceDown />);
     expect(screen.queryByRole('link')).toBeFalsy();
   });
+
+  it('highlights cards that are part of a known molecule combo', () => {
+    const { container } = render(
+      <Card element={{ symbol: 'O', name: 'Oxygen', number: 8 }} moleculeCombo="h2o" />
+    );
+    expect(container.querySelector('.card-known-molecule')).toBeTruthy();
+  });
+
+  it('does not highlight when symbol is not in the molecule', () => {
+    const { container } = render(
+      <Card element={{ symbol: 'Fe', name: 'Iron', number: 26 }} moleculeCombo="h2o" />
+    );
+    expect(container.querySelector('.card-known-molecule')).toBeFalsy();
+  });
 });

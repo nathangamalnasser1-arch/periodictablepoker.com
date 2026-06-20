@@ -63,6 +63,23 @@ describe('GameBoard', () => {
     const { container } = render(<GameBoard gameState={gameState} gameNumber={2} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />);
     expect(container.querySelector('.player-flash')).toBeTruthy();
     expect(screen.getByText('H₂O!')).toBeTruthy();
+    const badge = screen.getByTestId('combo-badge-h2o');
+    expect(badge.getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Water');
+  });
+
+  it('shows known molecules panel with Wikipedia links', () => {
+    const gameState = {
+      players: [{ id: 'player-0', holeCards: [{ symbol: 'H' }], chips: 1000, folded: false }],
+      communityCards: [],
+      phase: 'preflop',
+      dealerIndex: 0,
+    };
+    render(<GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />);
+    expect(screen.getByTestId('known-molecules-panel')).toBeTruthy();
+    expect(screen.getByTestId('known-molecule-nacl').getAttribute('href')).toContain('Sodium_chloride');
+    expect(screen.getByTestId('known-molecule-h2o').getAttribute('href')).toContain('Water');
+    expect(screen.getByTestId('known-molecule-chonp').getAttribute('href')).toContain('DNA');
+    expect(screen.getByTestId('molecules-wiki-index').getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Lists_of_molecules');
   });
 
   it('does not show Next Hand button when not showdown', () => {

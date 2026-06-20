@@ -8,6 +8,12 @@ import {
   moleculeLabel,
 } from '../scoreboard/scoreboard.js';
 import {
+  KNOWN_MOLECULES,
+  MOLECULES_WIKI_INDEX,
+  moleculeWikiUrl,
+  getKnownMolecule,
+} from '../data/knownMolecules.js';
+import {
   buildHierarchyIssueUrl,
   shouldShowCommunityHierarchy,
   githubIssuesListUrl,
@@ -226,13 +232,29 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
                 {isShowdown && isGameOver ? 'Busted' : 'All-in'}
               </div>
             )}
-            {comboLabel && !folded && <div className="player-combo-badge">{comboLabel}!</div>}
+            {comboLabel && !folded && (
+              <a
+                href={moleculeWikiUrl(combo)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="player-combo-badge player-combo-link"
+                data-testid={`combo-badge-${combo}`}
+                title={`${getKnownMolecule(combo)?.name ?? comboLabel} on Wikipedia`}
+              >
+                {comboLabel}!
+              </a>
+            )}
             {!folded && showHandInfo && <div className="player-best-hand">Best hand: {bestHand.weight} u</div>}
           </div>
           <div className="seat-cards">
             <div className="player-cards">
               {player.holeCards?.map((card, i) => (
-                <Card key={card.id || i} element={card} faceDown={!showCardsOpen && !isYou} />
+                <Card
+                  key={card.id || i}
+                  element={card}
+                  faceDown={!showCardsOpen && !isYou}
+                  moleculeCombo={combo && !folded ? combo : null}
+                />
               ))}
             </div>
           </div>
@@ -346,6 +368,35 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
           <span className="rules-github-hint"> Want to change the hierarchy? Propose on GitHub — community votes with reactions.</span>
         )}
       </div>
+      <div className="known-molecules-panel" data-testid="known-molecules-panel">
+        <strong>Known molecules:</strong>
+        {' '}
+        {Object.values(KNOWN_MOLECULES).map((mol, i) => (
+          <span key={mol.id}>
+            {i > 0 && ' · '}
+            <a
+              href={mol.wikiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="known-molecule-link"
+              data-testid={`known-molecule-${mol.id}`}
+              title={mol.name}
+            >
+              {mol.label}
+            </a>
+          </span>
+        ))}
+        {' · '}
+        <a
+          href={MOLECULES_WIKI_INDEX}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="known-molecule-index-link"
+          data-testid="molecules-wiki-index"
+        >
+          Lists of molecules (Wikipedia)
+        </a>
+      </div>
       {showCommunityHierarchy && (
         <div className="community-hierarchy" data-testid="community-hierarchy">
           <h3 className="community-hierarchy-title">Community hierarchy</h3>
@@ -414,7 +465,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
             </div>
             <div className="community-cards">
               {communityCards.map((card, i) => (
-                <Card key={card.id || i} element={card} />
+                <Card key={card.id || i} element={card} moleculeCombo={yourCombo} />
               ))}
             </div>
           </div>
@@ -430,7 +481,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
         <span className="your-hand-label">Your Hand:</span>
         <div className="your-hand-cards">
           {you?.holeCards?.map((card, i) => (
-            <Card key={card.id || i} element={card} />
+            <Card key={card.id || i} element={card} moleculeCombo={yourCombo} />
           ))}
         </div>
         {lastAction && (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { elementWikiUrlFromElement, resolveElementName } from '../data/elementWiki.js';
+import { isSymbolInKnownMolecule } from '../data/knownMolecules.js';
 
 /** Returns true if hex color is light (use black text) */
 function isLightColor(hex) {
@@ -13,7 +14,7 @@ function isLightColor(hex) {
   return luminance > 0.5;
 }
 
-export function Card({ element, faceDown = false }) {
+export function Card({ element, faceDown = false, moleculeCombo = null }) {
   if (faceDown) {
     return (
       <div className="card card-facedown" data-testid="card-facedown">
@@ -27,7 +28,8 @@ export function Card({ element, faceDown = false }) {
   const wikiUrl = elementWikiUrlFromElement(element);
   const bg = color || '#1f2937';
   const textDark = isLightColor(bg);
-  const cardClass = `card ${textDark ? 'card-light' : ''}${wikiUrl ? ' card-wiki' : ''}`;
+  const inKnownMolecule = moleculeCombo && isSymbolInKnownMolecule(symbol, moleculeCombo);
+  const cardClass = `card ${textDark ? 'card-light' : ''}${wikiUrl ? ' card-wiki' : ''}${inKnownMolecule ? ' card-known-molecule' : ''}`;
 
   const content = (
     <>
