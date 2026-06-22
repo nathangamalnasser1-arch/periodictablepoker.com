@@ -15,7 +15,10 @@
     "cap:sync": "npm run build && npx cap sync",
     "cap:android": "npm run cap:sync && npx cap open android",
     "cap:ios": "npm run cap:sync && npx cap open ios",
-    "android:release": "npm run cap:sync && cd android && .\\gradlew.bat bundleRelease"
+    "android:release": "npm run cap:sync && cd android && .\\gradlew.bat bundleRelease",
+    "generate:deck-pdf": "python scripts/generate-deck-pdf.py",
+    "generate:deck-pdf-large": "python scripts/generate-deck-pdf.py --layout large",
+    "generate:youknobtainium-deck-pdf": "python scripts/generate-youknobtainium-deck-pdf.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",

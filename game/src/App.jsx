@@ -13,6 +13,8 @@ import { HomePage } from './components/HomePage.jsx';
 import { Lobby } from './multiplayer/Lobby.jsx';
 import { useMultiplayer } from './multiplayer/useMultiplayer.js';
 import { isLocalTestWindow } from './utils/localTest.js';
+import { useAuth } from './auth/useAuth.jsx';
+import { SubscribeFlow } from './auth/SubscribeFlow.jsx';
 
 import './App.css';
 
@@ -23,6 +25,8 @@ export default function App() {
   const [gameState, setGameState] = useState(null);
   const [gameKey, setGameKey] = useState(0);
   const [appMode, setAppMode] = useState('home'); // home | solo | online
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const auth = useAuth();
 
   const applyRemoteState = useCallback((state) => {
     setGameState(ensureTurnStamp(state));
@@ -137,35 +141,51 @@ export default function App() {
     ? (mp.lobbyData?.playerNames ?? null)
     : null;
 
+  const handleCoinAwarded = useCallback((amount) => {
+    auth.setProfile((p) => (p ? { ...p, coinBalance: (p.coinBalance ?? 0) + amount } : p));
+  }, [auth]);
+
+  const handleStatsUpdated = useCallback(() => {
+    auth.refreshProfile?.();
+  }, [auth]);
+
   // ── HOME ──────────────────────────────────────────────────────────────────
   if (appMode === 'home') {
     return (
-      <HomePage
-        isLocalTest={isLocalTest}
-        localTestBanner={isLocalTest && (
-          <div className="local-test-banner" data-testid="local-test-banner">
-            {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-              ? (
-                <>Local dev — run <code>npm run deploy</code> from <code>game/</code> to update the live site.</>
-              )
-              : (
-                <>Dev mode (<code>?test=1</code>) — use <strong>Test all 50 molecules</strong> below.</>
-              )}
-          </div>
-        )}
-        onPlaySolo={startSoloGame}
-        onPlayOnline={() => { setAppMode('online'); mp.openLobby(); }}
-        onMoleculeTest={startMoleculeTest}
-        githubRepo={GITHUB_REPO}
-      />
+      <>
+        <HomePage
+          isLocalTest={isLocalTest}
+          localTestBanner={isLocalTest && (
+            <div className="local-test-banner" data-testid="local-test-banner">
+              {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                ? (
+                  <>Local dev — run <code>npm run deploy</code> from <code>game/</code> to update the live site.</>
+                )
+                : (
+                  <>Dev mode (<code>?test=1</code>) — use <strong>Test all 50 molecules</strong> below.</>
+                )}
+            </div>
+          )}
+          onPlaySolo={startSoloGame}
+          onPlayOnline={() => { setAppMode('online'); mp.openLobby(); }}
+          onMoleculeTest={startMoleculeTest}
+          onSubscribe={() => setSubscribeOpen(true)}
+          githubRepo={GITHUB_REPO}
+          subscriberCount={auth.subscriberCount}
+          subscriberGoal={auth.subscriberGoal}
+          isSubscriber={auth.isSubscriber}
+          coinBalance={auth.coinBalance}
+        />
+        <SubscribeFlow open={subscribeOpen} onClose={() => setSubscribeOpen(false)} />
+      </>
     );
   }
 
   // ── ONLINE LOBBY / WAITING ROOM ───────────────────────────────────────────
   if (appMode === 'online' && !mp.isMultiplayer) {
     return (
-      <div className="app">
-        <header>
+      <div className="app app-lobby" data-testid="app-lobby">
+        <header className="app-page-header">
           <h1>Periodic Table Poker</h1>
         </header>
         <main>
@@ -180,13 +200,13 @@ export default function App() {
 
   // ── SOLO GAME (or multiplayer once game starts) ───────────────────────────
   return (
-    <div className="app">
+    <div className="app app-game" data-testid="app-game">
       {isLocalTest && (
         <div className="local-test-banner" data-testid="local-test-banner">
           Local test — not deployed.
         </div>
       )}
-      <header>
+      <header className="app-game-header" data-testid="app-game-header">
         <h1>Periodic Table Poker</h1>
         <p className="tagline">Texas Hold'em with 118 element cards — win all the chips</p>
       </header>
@@ -211,9 +231,16 @@ export default function App() {
             isMultiplayer={mp.isMultiplayer}
             openCards={mp.openCards}
             playerNames={playerNames}
+            isSubscriber={auth.isSubscriber}
+            subscriberUid={auth.user?.uid ?? null}
+            subscriberDisplayName={auth.displayName}
+            onCoinAwarded={handleCoinAwarded}
+            onStatsUpdated={handleStatsUpdated}
+            onSubscribeClick={() => setSubscribeOpen(true)}
           />
         )}
       </main>
+      <SubscribeFlow open={subscribeOpen} onClose={() => setSubscribeOpen(false)} />
     </div>
   );
 }

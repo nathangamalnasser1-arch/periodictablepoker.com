@@ -45,6 +45,7 @@ import {
   writeDogBarkPreference,
   playDogBark,
 } from '../audio/dogBark.js';
+import { useGameplayRecorder } from '../stats/useGameplayRecorder.js';
 
 const HUMAN_INDEX = 0;
 const NUM_PLAYERS = 5;
@@ -75,7 +76,7 @@ function getSeatPosition(seatIndex) {
   };
 }
 
-export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, onNextHand, isGameOver, githubRepo, humanIndex = HUMAN_INDEX, isMultiplayer = false, openCards = false, playerNames = null, onSubmitMoleculeScore = submitMoleculeScore }) {
+export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, onNextHand, isGameOver, githubRepo, humanIndex = HUMAN_INDEX, isMultiplayer = false, openCards = false, playerNames = null, onSubmitMoleculeScore = submitMoleculeScore, isSubscriber = false, subscriberUid = null, subscriberDisplayName = 'Player', onCoinAwarded, onStatsUpdated, onSubscribeClick }) {
   if (!gameState) {
     return (
       <div className="game-board" data-testid="game-board">
@@ -144,6 +145,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   const [houseRulesOpen, setHouseRulesOpen] = useState(false);
   const [houseRulesTab, setHouseRulesTab] = useState('rules');
   const [realGameToastVisible, setRealGameToastVisible] = useState(false);
+  const [guestCoinNudge, setGuestCoinNudge] = useState(false);
   const realGameToastShown = useRef(false);
   const riverAllInTriggered = useRef(false);
   const isRiverAllIn =
@@ -159,6 +161,24 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   }, [isRiverAllIn, onBotTurn]);
   useEffect(() => {
     if (phase !== 'river') riverAllInTriggered.current = false;
+  }, [phase]);
+
+  const { coinToast } = useGameplayRecorder({
+    gameState,
+    gameNumber,
+    isGameOver,
+    humanIndex,
+    isMultiplayer,
+    isSubscriber,
+    uid: subscriberUid,
+    displayName: subscriberDisplayName,
+    onAwarded: onCoinAwarded,
+    onStatsUpdated,
+    onGuestNudge: () => setGuestCoinNudge(true),
+  });
+
+  useEffect(() => {
+    if (phase !== 'showdown') setGuestCoinNudge(false);
   }, [phase]);
 
   useEffect(() => {
@@ -376,7 +396,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
   };
 
   return (
-    <div className="game-board poker-view" data-testid="game-board">
+    <div className={`game-board poker-view${isShowdown ? ' is-showdown' : ''}`} data-testid="game-board">
       {moleculeTest && catalogTarget && !moleculeTestComplete && (
         <div className="molecule-test-banner" data-testid="molecule-test-banner">
           Molecule test {moleculeTestIndex}/{MOLECULE_CATALOG_COUNT}: {catalogTarget.label} — need {catalogTarget.cardHint}
@@ -637,8 +657,9 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
           </div>
         </div>
       </div>
-      {isShowdown && winnerName && winnerReasonLabel && (
+      {isShowdown && (
         <div className="showdown-winner-block" data-testid="showdown-winner-block">
+          {winnerName && winnerReasonLabel && (
           <div className={`winner-announce ${gameNumber === 3 && winnerReason === 'chonp' ? 'winner-announce-chonp' : ''}`} data-testid="winner-announce">
             {gameNumber === 3 && winnerReason === 'chonp' ? (
               <>CHONP wins! (atoms of DNA — proof of life) Winner: {winnerName} — flashing</>
@@ -648,6 +669,7 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
               <>Winner: {winnerName} ({winnerReasonLabel})!</>
             )}
           </div>
+          )}
           {moleculeTest && isShowdown && (
             <p
               className={moleculeTestPassed ? 'molecule-test-pass' : 'molecule-test-fail'}
@@ -672,6 +694,19 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
               {you?.chips === 0
                 ? 'You are out of atomcoins.'
                 : `${winnerName || 'You'} win${winnerName && winnerName !== 'You' ? 's' : ''} the game!`}
+            </p>
+          )}
+          {coinToast && (
+            <p className="coin-toast" data-testid="coin-toast">{coinToast}</p>
+          )}
+          {guestCoinNudge && !isSubscriber && (
+            <p className="coin-guest-nudge" data-testid="coin-guest-nudge">
+              Subscribe to earn prize coins.{' '}
+              {onSubscribeClick && (
+                <button type="button" className="coin-nudge-link" onClick={onSubscribeClick}>
+                  Subscribe
+                </button>
+              )}
             </p>
           )}
           {showMoleculeScoreboard && (
@@ -781,11 +816,6 @@ export function GameBoard({ gameState, gameNumber, onPlayerAction, onBotTurn, on
           </div>
         )}
         <div className="action-bar">
-          {isShowdown && onNextHand && (
-            <button type="button" className="btn-primary" onClick={onNextHand}>
-              {isGameOver ? 'New Game' : 'Next Hand'}
-            </button>
-          )}
           {isYourTurn && (
             <>
               {turnSecondsRemaining != null && (

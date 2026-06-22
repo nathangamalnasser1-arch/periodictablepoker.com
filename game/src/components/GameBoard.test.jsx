@@ -87,6 +87,23 @@ describe('GameBoard', () => {
     expect(onNextHand).toHaveBeenCalledTimes(1);
   });
 
+  it('shows only one Next Hand button during showdown with a winner', () => {
+    const gameState = {
+      players: [
+        { id: 'player-0', holeCards: [{ symbol: 'H' }, { symbol: 'O' }], chips: 500, folded: false },
+        { id: 'player-1', holeCards: [{ symbol: 'C' }, { symbol: 'N' }], chips: 1500, folded: false },
+      ],
+      communityCards: [{ symbol: 'Na' }, { symbol: 'Cl' }],
+      phase: 'showdown',
+      dealerIndex: 0,
+      winnerIndex: 1,
+      winnerReason: 'mass',
+    };
+    render(<GameBoard gameState={gameState} gameNumber={4} onPlayerAction={() => {}} onBotTurn={() => {}} onNextHand={() => {}} isGameOver={false} />);
+    expect(screen.getAllByRole('button', { name: /next hand/i })).toHaveLength(1);
+    expect(screen.getByTestId('game-board').className).toMatch(/is-showdown/);
+  });
+
   it('shows molecule combo badge and flash when player has H and O', () => {
     const gameState = {
       players: [

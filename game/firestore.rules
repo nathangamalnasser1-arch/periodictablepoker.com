@@ -2,6 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // TODO: Enforce Firebase App Check (request.app != null) before production.
+    // TODO: Move stat/ledger writes to Cloud Functions for stronger anti-cheat.
+
     match /poker-games/{gameId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
@@ -31,5 +34,96 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && validUserProfileUpdate();
+    }
+
+    match /metrics/subscribers {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.count is int
+        && request.resource.data.count >= 0
+        && (
+          !resource.exists()
+          || request.resource.data.count == resource.data.count + 1
+        );
+    }
+
+    match /leaderboards/ptp-coins/entries/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.coinBalance is int
+        && request.resource.data.coinBalance >= 0;
+    }
+
+    match /leaderboards/ptp-coins/transactions/{txId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.amount in [10, 100]
+        && request.resource.data.reason in ['hand_win', 'session_win']
+        && request.resource.data.gameNumber is int
+        && request.resource.data.gameNumber >= 4;
+      allow update, delete: if false;
+    }
+
+    match /leaderboards/ptp-stats/entries/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && validStatsEntry();
+    }
+
+    match /ledger/ptp-champions/events/{eventId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.eventType in ['hand_win', 'session_win', 'stat_update']
+        && request.resource.data.gameNumber is int
+        && request.resource.data.gameNumber >= 4
+        && request.resource.data.status == 'CONFIRMED';
+      allow update, delete: if false;
+    }
+
+    function validStatsEntry() {
+      return request.resource.data.gamesPlayed is int
+        && request.resource.data.gamesWon is int
+        && request.resource.data.handsPlayed is int
+        && request.resource.data.handsWon is int
+        && request.resource.data.bestHandWeight is int
+        && request.resource.data.highestPotWin is int
+        && request.resource.data.coinBalance is int
+        && request.resource.data.gamesPlayed >= 0
+        && request.resource.data.gamesWon >= 0
+        && request.resource.data.handsPlayed >= 0
+        && request.resource.data.handsWon >= 0
+        && request.resource.data.bestHandWeight >= 0
+        && request.resource.data.highestPotWin >= 0
+        && request.resource.data.coinBalance >= 0;
+    }
+
+    function validUserProfileUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      let allowed = ['displayName', 'email', 'authProviders',
+        'emailVerified', 'coinBalance', 'isSubscriber',
+        'subscriberNumber', 'subscribedAt', 'createdAt',
+        'gamesPlayed', 'gamesWon', 'handsPlayed', 'handsWon',
+        'bestHandWeight', 'bestHandReason', 'highestPotWin'];
+      return diff.changedKeys().hasOnly(allowed)
+        && (!diff.changedKeys().hasAny(['isSubscriber', 'subscriberNumber'])
+          || becomingSubscriber());
+    }
+
+    function becomingSubscriber() {
+      return request.resource.data.isSubscriber == true
+        && (resource.data == null || resource.data.isSubscriber != true)
+        && request.resource.data.emailVerified == true;
+    }
   }
 }

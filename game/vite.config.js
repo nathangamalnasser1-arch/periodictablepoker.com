@@ -8,6 +8,11 @@ export default defineConfig({
       input: {
         main: './index.html',
         scoreboard: './scoreboard.html',
+        concept: './concept.html',
+        coins: './coins.html',
+        profile: './profile.html',
+        rankings: './rankings.html',
+        ledger: './ledger.html',
       },
     },
   },

@@ -6,8 +6,15 @@ export function HomePage({
   onPlaySolo,
   onPlayOnline,
   onMoleculeTest,
+  onSubscribe = () => {},
   githubRepo,
+  subscriberCount = 0,
+  subscriberGoal = 10000,
+  isSubscriber = false,
+  coinBalance = 0,
 }) {
+  const progressPct = Math.min(100, Math.round((subscriberCount / subscriberGoal) * 100));
+
   return (
     <div className="app app-home">
       {isLocalTest && localTestBanner}
@@ -36,6 +43,21 @@ export function HomePage({
               Texas Hold&apos;em with 118 element cards — win all the chips
             </p>
           </header>
+
+          <div className="home-subscriber-progress" data-testid="subscriber-progress">
+            <p className="home-subscriber-label">
+              {subscriberCount.toLocaleString()} / {subscriberGoal.toLocaleString()} verified subscribers
+            </p>
+            <div className="home-subscriber-bar" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100}>
+              <div className="home-subscriber-fill" style={{ width: `${progressPct}%` }} />
+            </div>
+            {isSubscriber && (
+              <p className="home-coin-balance" data-testid="home-coin-balance">
+                Your prize coins: <strong>{coinBalance}</strong>
+              </p>
+            )}
+          </div>
+
           <nav className="home-nav" aria-label="Main navigation">
             <div className="home-nav-primary">
               <button type="button" className="btn-primary btn-home-play" onClick={onPlaySolo}>
@@ -46,12 +68,57 @@ export function HomePage({
               </button>
             </div>
             <div className="home-nav-secondary">
+              {!isSubscriber && (
+                <button
+                  type="button"
+                  className="btn-primary btn-subscribe-home"
+                  onClick={onSubscribe}
+                  data-testid="subscribe-home-btn"
+                >
+                  Subscribe &amp; earn coins
+                </button>
+              )}
+              <a
+                href="/rankings.html"
+                className="btn-secondary"
+                data-testid="rankings-link-home"
+              >
+                Rankings
+              </a>
+              <a
+                href="/ledger.html"
+                className="btn-secondary"
+                data-testid="ledger-link-home"
+              >
+                Public ledger
+              </a>
+              <a
+                href="/profile.html"
+                className="btn-secondary"
+                data-testid="profile-link-home"
+              >
+                Profile
+              </a>
+              <a
+                href="/concept.html"
+                className="btn-secondary"
+                data-testid="concept-link-home"
+              >
+                How prize coins work
+              </a>
+              <a
+                href="/coins.html"
+                className="btn-secondary"
+                data-testid="coin-scoreboard-home"
+              >
+                Coin scoreboard
+              </a>
               <a
                 href="/scoreboard.html"
                 className="btn-secondary btn-view-scoreboard-home"
                 data-testid="view-scoreboard-home"
               >
-                View Scoreboard
+                Molecule scoreboard
               </a>
               <a
                 href={`https://github.com/${githubRepo}/issues`}
